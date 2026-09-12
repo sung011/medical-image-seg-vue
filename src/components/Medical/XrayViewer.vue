@@ -1,39 +1,39 @@
 <template>
   <div class="xray-wrap">
     <ImageSideToolbar
-      :mode="viewMode"
-      @zoom-in="zoomIn"
-      @zoom-out="zoomOut"
-      @zoom-reset="zoom = 1"
-      @update:mode="setMode"
-      @window-toggle="toggleWindow"
-      @reset="resetView"
+        :mode="viewMode"
+        @zoom-in="zoomIn"
+        @zoom-out="zoomOut"
+        @zoom-reset="zoom = 1"
+        @update:mode="setMode"
+        @window-toggle="toggleWindow"
+        @reset="resetView"
     />
 
     <div class="viewport">
       <div class="stage" :style="stageStyle">
         <div class="image-frame">
           <img
-            class="xray-image"
-            :src="imageSrc"
-            alt="Chest X-ray"
-            draggable="false"
-            @error="onImageError"
+              class="xray-image"
+              :src="imageSrc"
+              alt="Chest X-ray"
+              draggable="false"
+              @error="onImageError"
           />
           <RoiLayer
-            v-if="viewMode !== 'pan'"
-            :rois="rois"
-            :tool="tool"
-            @add-roi="$emit('add-roi', $event)"
-            @remove-roi="$emit('remove-roi', $event)"
+              v-if="viewMode !== 'pan'"
+              :rois="rois"
+              :tool="tool"
+              @add-roi="$emit('add-roi', $event)"
+              @remove-roi="$emit('remove-roi', $event)"
           />
         </div>
       </div>
 
       <div
-        v-if="viewMode === 'pan'"
-        class="pan-layer"
-        @mousedown.prevent="onPanStart"
+          v-if="viewMode === 'pan'"
+          class="pan-layer"
+          @mousedown.prevent="onPanStart"
       />
 
       <div class="overlay-meta">
@@ -52,7 +52,7 @@ import RoiLayer from './RoiLayer.vue'
 
 export default {
   name: 'XrayViewer',
-  components: { ImageSideToolbar, RoiLayer },
+  components: {ImageSideToolbar, RoiLayer},
   props: {
     imageSrc: {
       type: String,
@@ -71,7 +71,7 @@ export default {
   data() {
     return {
       zoom: 1,
-      pan: { x: 0, y: 0 },
+      pan: {x: 0, y: 0},
       brightness: 1,
       contrast: 1,
       windowW: 4096,
@@ -131,7 +131,7 @@ export default {
     },
     resetView() {
       this.zoom = 1
-      this.pan = { x: 0, y: 0 }
+      this.pan = {x: 0, y: 0}
       this.brightness = 1
       this.contrast = 1
       this.windowW = 4096
@@ -168,6 +168,7 @@ export default {
   display: flex;
   /* gap: 8px; */
 }
+
 .viewport {
   position: relative;
   flex: 1;
@@ -176,6 +177,7 @@ export default {
   background: #0b1220;
   border-radius: 0 0 8px 0;
 }
+
 .stage {
   position: absolute;
   inset: 0;
@@ -184,12 +186,14 @@ export default {
   align-items: center;
   justify-content: center;
 }
+
 .image-frame {
   position: relative;
   width: 100%;
   height: 100%;
   background: #111827;
 }
+
 .xray-image {
   display: block;
   width: 100%;
@@ -199,12 +203,14 @@ export default {
   pointer-events: none;
   background: #000;
 }
+
 .pan-layer {
   position: absolute;
   inset: 0;
   z-index: 3;
   cursor: grab;
 }
+
 .overlay-meta {
   position: absolute;
   left: 12px;
@@ -216,16 +222,19 @@ export default {
   text-align: left;
   pointer-events: none;
 }
+
 .orient {
   position: absolute;
   top: 10px;
-  left: 12px;
+  left: 90px;
+  //left: 12px;
   z-index: 4;
   color: #fff;
   font-weight: 700;
   font-size: 14px;
   pointer-events: none;
 }
+
 .image-error {
   position: absolute;
   inset: 0;

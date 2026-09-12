@@ -1,26 +1,26 @@
 <template>
   <div class="case-page">
-    <MedHeader />
+    <MedHeader/>
 
     <main class="content">
       <section class="viewer-col">
         <CaseInfoBar
-          case-id="02"
-          @go-list="onGoList"
+            case-id="02"
+            @go-list="onGoList"
         />
 
         <div class="viewer-panel">
           <RoiToolbar
-            v-model:tool="tool"
-            @submit="onSubmit"
+              v-model:tool="tool"
+              @submit="onSubmit"
           />
           <XrayViewer
-            class="xray-fill"
-            :image-src="imageSrc"
-            :rois="rois"
-            :tool="tool"
-            @add-roi="addRoi"
-            @remove-roi="removeRoi"
+              class="xray-fill"
+              :image-src="imageSrc"
+              :rois="rois"
+              :tool="tool"
+              @add-roi="addRoi"
+              @remove-roi="removeRoi"
           />
           <p class="footer-hint">
             ⓘ ROI는 하나 이상 지정할 수 있습니다. 지우기 도구로 ROI를 클릭하면 삭제됩니다.
@@ -28,7 +28,7 @@
         </div>
       </section>
 
-      <TermDictionary class="dict-fill" />
+      <TermDictionary class="dict-fill"/>
     </main>
   </div>
 </template>
@@ -87,6 +87,7 @@ export default {
   text-align: left;
   overflow: hidden;
 }
+
 .content {
   flex: 1;
   min-height: 0;
@@ -95,6 +96,7 @@ export default {
   padding: 12px 16px 16px;
   box-sizing: border-box;
 }
+
 .viewer-col {
   flex: 1;
   min-width: 0;
@@ -103,6 +105,7 @@ export default {
   flex-direction: column;
   gap: 10px;
 }
+
 .viewer-panel {
   flex: 1;
   min-height: 0;
@@ -113,6 +116,7 @@ export default {
   border-radius: 8px;
   overflow: hidden;
 }
+
 .footer-hint {
   margin: 0;
   padding: 10px 12px;
@@ -122,10 +126,13 @@ export default {
   background: #f8fafc;
   border-top: 1px solid #e5e7eb;
 }
+
 .xray-fill {
   flex: 1;
   min-height: 0;
+  position: relative;
 }
+
 .dict-fill {
   align-self: stretch;
   max-height: none;
