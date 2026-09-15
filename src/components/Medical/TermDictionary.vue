@@ -1,11 +1,12 @@
 <template>
   <aside class="dictionary">
     <h3>의학용어 사전</h3>
+    <p v-if="metaLabel" class="meta">{{ metaLabel }}</p>
     <input
       v-model="query"
       type="search"
       class="search"
-      placeholder="용어 검색"
+      placeholder="용어 검색 (한/영)"
     />
     <div class="filters">
       <button
@@ -18,7 +19,11 @@
         {{ tag }}
       </button>
     </div>
-    <ul class="term-list">
+
+    <p v-if="loading" class="status">불러오는 중…</p>
+    <p v-else-if="error" class="status error">{{ error }}</p>
+    <p v-else-if="!filteredTerms.length" class="status">검색 결과가 없습니다.</p>
+    <ul v-else class="term-list">
       <li v-for="term in filteredTerms" :key="term.id" class="term-card">
         <div class="term-title">
           <strong>{{ term.en }}</strong>
@@ -34,29 +39,25 @@
 </template>
 
 <script>
-const SAMPLE_TERMS = [
-  {
-    id: 1,
-    en: 'Pneumothorax',
-    ko: '기흉',
-    desc: '흉막강에 공기가 차서 폐가 일부 또는 전부 허탈되는 상태.',
-    categories: ['흉부', '폐']
-  },
-  {
-    id: 2,
-    en: 'Pleural effusion',
-    ko: '흉수',
-    desc: '흉막강에 액체가 고여 있는 소견. CXR에서 늑골횡격막각 둔화로 관찰.',
-    categories: ['흉부', '폐']
-  },
-  {
-    id: 3,
-    en: 'Consolidation',
-    ko: '경화',
-    desc: '폐포가 체액·염증 삼출물로 채워져 음영이 증가한 소견.',
-    categories: ['폐']
+const GLOSSARY_API = 'http://127.0.0.1:8000/glossary'
+
+function parsePgArray(value) {
+  if (!value || typeof value !== 'string') return []
+  const inner = value.replace(/^\{|\}$/g, '').trim()
+  if (!inner) return []
+  return inner.split(',').map((s) => s.trim()).filter(Boolean)
+}
+
+function mapItem(item) {
+  const categories = parsePgArray(item.tags_ko)
+  return {
+    id: item.id,
+    en: item.name_en || '',
+    ko: item.name_ko || '',
+    desc: item.definition_ko || '',
+    categories
   }
-]
+}
 
 export default {
   name: 'TermDictionary',
@@ -64,22 +65,79 @@ export default {
     return {
       query: '',
       filter: '전체',
-      tags: ['전체', '흉부', '폐'],
-      terms: SAMPLE_TERMS
+      tags: ['전체'],
+      terms: [],
+      loading: false,
+      error: '',
+      region: '',
+      type: '',
+      count: 0
     }
   },
   computed: {
+    metaLabel() {
+      if (!this.region && !this.type) return ''
+      const parts = []
+      if (this.region) parts.push(this.region)
+      if (this.type) parts.push(this.type)
+      return `${parts.join(' · ')} · ${this.count}개`
+    },
     filteredTerms() {
       const q = this.query.trim().toLowerCase()
+      const qRaw = this.query.trim()
       return this.terms.filter((term) => {
         const matchTag =
           this.filter === '전체' || term.categories.includes(this.filter)
         const matchQuery =
           !q ||
           term.en.toLowerCase().includes(q) ||
-          term.ko.includes(this.query.trim())
+          term.ko.includes(qRaw) ||
+          term.desc.includes(qRaw)
         return matchTag && matchQuery
       })
+    }
+  },
+  watch: {
+    '$route.query': {
+      immediate: true,
+      handler() {
+        this.fetchGlossary()
+      }
+    }
+  },
+  methods: {
+    async fetchGlossary() {
+      const region = this.$route.query.region || 'brain'
+      const type = this.$route.query.type || 'CT'
+      this.region = region
+      this.type = type
+      this.loading = true
+      this.error = ''
+
+      try {
+        const url = `${GLOSSARY_API}?region=${encodeURIComponent(region)}&type=${encodeURIComponent(type)}`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`API 오류 (${res.status})`)
+        const data = await res.json()
+        if (!data.ok) throw new Error('용어 사전을 불러오지 못했습니다.')
+
+        const terms = (data.items || []).map(mapItem)
+        const tagSet = new Set()
+        terms.forEach((t) => t.categories.forEach((c) => tagSet.add(c)))
+
+        this.terms = terms
+        this.count = data.count ?? terms.length
+        this.tags = ['전체', ...Array.from(tagSet).sort()]
+        if (!this.tags.includes(this.filter)) this.filter = '전체'
+      } catch (e) {
+        this.terms = []
+        this.count = 0
+        this.tags = ['전체']
+        this.filter = '전체'
+        this.error = e.message || '용어 사전을 불러오지 못했습니다.'
+      } finally {
+        this.loading = false
+      }
     }
   }
 }
@@ -107,6 +165,11 @@ h3 {
   font-size: 15px;
   color: #1e3a5f;
 }
+.meta {
+  margin: 0;
+  font-size: 11px;
+  color: #64748b;
+}
 .search {
   width: 100%;
   box-sizing: border-box;
@@ -132,6 +195,14 @@ h3 {
   background: #1e3a5f;
   border-color: #1e3a5f;
   color: #fff;
+}
+.status {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+.status.error {
+  color: #b91c1c;
 }
 .term-list {
   list-style: none;
@@ -163,6 +234,7 @@ h3 {
 }
 .chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 .chips span {

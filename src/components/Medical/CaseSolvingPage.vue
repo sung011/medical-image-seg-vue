@@ -5,7 +5,8 @@
     <main class="content">
       <section class="viewer-col">
         <CaseInfoBar
-            case-id="02"
+            :case-id="caseId"
+            :summary="caseSummary"
             @go-list="onGoList"
         />
 
@@ -14,7 +15,10 @@
               v-model:tool="tool"
               @submit="onSubmit"
           />
+          <p v-if="problemLoading" class="panel-status">문제 불러오는 중…</p>
+          <p v-else-if="problemError" class="panel-status error">{{ problemError }}</p>
           <XrayViewer
+              v-else
               class="xray-fill"
               :image-src="imageSrc"
               :rois="rois"
@@ -40,6 +44,15 @@ import RoiToolbar from './RoiToolbar.vue'
 import XrayViewer from './XrayViewer.vue'
 import TermDictionary from './TermDictionary.vue'
 
+const PROBLEM_API = 'http://127.0.0.1:8000/learning/problem'
+const IMAGE_BASE = 'http://125.134.136.59:3333'
+
+function buildImageUrl(path) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  return `${IMAGE_BASE}${path.startsWith('/') ? path : `/${path}`}`
+}
+
 export default {
   name: 'CaseSolvingPage',
   components: {
@@ -53,10 +66,54 @@ export default {
     return {
       tool: 'box',
       rois: [],
-      imageSrc: '/medical/xray-sample.png'
+      imageSrc: '',
+      caseId: '-',
+      caseSummary: '',
+      problemLoading: false,
+      problemError: ''
+    }
+  },
+  watch: {
+    '$route.query': {
+      immediate: true,
+      handler() {
+        this.fetchProblem()
+      }
     }
   },
   methods: {
+    async fetchProblem() {
+      const stPart = this.$route.query.region || 'brain'
+      const stModal = this.$route.query.type || 'CT'
+      this.problemLoading = true
+      this.problemError = ''
+      this.rois = []
+
+      try {
+        const url =
+          `${PROBLEM_API}?st_part=${encodeURIComponent(stPart)}` +
+          `&st_modal=${encodeURIComponent(stModal)}`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`API 오류 (${res.status})`)
+        const data = await res.json()
+        if (!data.ok || !data.problem) {
+          throw new Error('문제를 불러오지 못했습니다.')
+        }
+
+        const problem = data.problem
+        this.caseId = String(problem.idx ?? '-').padStart(2, '0')
+        this.imageSrc = buildImageUrl(problem.st_image)
+        this.caseSummary =
+          `${stPart.toUpperCase()} · ${stModal} 영상 판독 학습 문제입니다.`
+      } catch (e) {
+        this.caseId = '-'
+        this.imageSrc = ''
+        this.caseSummary = ''
+        this.problemError = e.message || '문제를 불러오지 못했습니다.'
+      } finally {
+        this.problemLoading = false
+      }
+    },
     addRoi(roi) {
       this.rois.push(roi)
     },
@@ -131,6 +188,21 @@ export default {
   flex: 1;
   min-height: 0;
   position: relative;
+}
+
+.panel-status {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  background: #0b1220;
+}
+
+.panel-status.error {
+  color: #fca5a5;
 }
 
 .dict-fill {

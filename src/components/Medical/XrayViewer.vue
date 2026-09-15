@@ -87,6 +87,10 @@ export default {
       if (this.tool === 'box' || this.tool === 'circle' || this.tool === 'eraser') {
         this.viewMode = 'draw'
       }
+    },
+    imageSrc() {
+      this.imageError = false
+      this.resetView()
     }
   },
   computed: {
