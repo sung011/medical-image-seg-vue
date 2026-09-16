@@ -12,13 +12,21 @@
 
     <div class="viewport">
       <div class="stage" :style="stageStyle">
-        <div class="image-frame">
+        <div ref="imageFrame" class="image-frame">
           <img
+              ref="xrayImage"
               class="xray-image"
               :src="imageSrc"
               alt="Chest X-ray"
               draggable="false"
               @error="onImageError"
+          />
+          <img
+              v-if="overlaySrc"
+              class="overlay-image"
+              :src="overlaySrc"
+              alt="이상 부위 표시"
+              draggable="false"
           />
           <RoiLayer
               v-if="viewMode !== 'pan'"
@@ -65,6 +73,10 @@ export default {
     tool: {
       type: String,
       default: 'box'
+    },
+    overlaySrc: {
+      type: String,
+      default: ''
     }
   },
   emits: ['add-roi', 'remove-roi'],
@@ -142,6 +154,19 @@ export default {
       this.windowL = 2048
       this.viewMode = 'draw'
     },
+    getImageLayout() {
+      const img = this.$refs.xrayImage
+      const frame = this.$refs.imageFrame
+      if (!img || !frame || !img.naturalWidth || !img.naturalHeight) {
+        return null
+      }
+      return {
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+        frameWidth: frame.clientWidth,
+        frameHeight: frame.clientHeight
+      }
+    },
     onPanStart(event) {
       if (this.viewMode !== 'pan') return
       this.panning = true
@@ -198,14 +223,24 @@ export default {
   background: #111827;
 }
 
-.xray-image {
+.xray-image,
+.overlay-image {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
   user-select: none;
   pointer-events: none;
+}
+
+.xray-image {
   background: #000;
+}
+
+.overlay-image {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 .pan-layer {

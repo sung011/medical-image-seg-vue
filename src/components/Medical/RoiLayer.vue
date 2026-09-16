@@ -86,10 +86,17 @@ export default {
     onMouseMove(event) {
       if (!this.drawing || !this.start) return
       const point = this.getPoint(event)
-      const x = Math.min(this.start.x, point.x)
-      const y = Math.min(this.start.y, point.y)
-      const w = Math.abs(point.x - this.start.x)
-      const h = Math.abs(point.y - this.start.y)
+      let x = Math.min(this.start.x, point.x)
+      let y = Math.min(this.start.y, point.y)
+      let w = Math.abs(point.x - this.start.x)
+      let h = Math.abs(point.y - this.start.y)
+      if (this.draft.type === 'circle') {
+        const size = Math.min(w, h)
+        x = point.x < this.start.x ? this.start.x - size : this.start.x
+        y = point.y < this.start.y ? this.start.y - size : this.start.y
+        w = size
+        h = size
+      }
       this.draft = { ...this.draft, x, y, w, h }
     },
     onMouseUp() {

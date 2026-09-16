@@ -24,8 +24,13 @@
       </button>
     </div>
     <p class="hint">① ROI를 드래그하여 영역을 지정하세요</p>
-    <button type="button" class="submit-btn" @click="$emit('submit')">
-      제출
+    <button
+      type="button"
+      class="submit-btn"
+      :disabled="submitting"
+      @click="$emit('submit')"
+    >
+      {{ submitting ? '채점 중…' : '제출' }}
     </button>
   </div>
 </template>
@@ -37,6 +42,10 @@ export default {
     tool: {
       type: String,
       default: 'box'
+    },
+    submitting: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['update:tool', 'submit']
@@ -90,7 +99,11 @@ export default {
   font-weight: 600;
   cursor: pointer;
 }
-.submit-btn:hover {
+.submit-btn:hover:not(:disabled) {
   background: #0d9488;
+}
+.submit-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 </style>
