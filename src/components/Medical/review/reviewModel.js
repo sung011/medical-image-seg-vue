@@ -24,6 +24,12 @@ export const MOCK_USER_ROI = {
   height: 0.3
 }
 
+export function publicAssetUrl(path) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path) || String(path).startsWith('data:')) return path
+  return path.startsWith('/') ? path : `/${path}`
+}
+
 export function overlaySrcFromBase64(b64) {
   if (!b64) return ''
   if (String(b64).startsWith('data:')) return b64
@@ -72,9 +78,11 @@ export function loadReviewFromStorage() {
     return {
       usingMock: false,
       grade: saved.gradeResult,
-      imageSrc: saved.imageDataUrl || '',
+      imageSrc: publicAssetUrl(saved.imagePath) || saved.imageDataUrl || '',
       userRoi: saved.userRoi || null,
-      overlaySrc: overlaySrcFromBase64(saved.gradeResult.overlay_png_base64)
+      overlaySrc:
+        publicAssetUrl(saved.overlayPath) ||
+        overlaySrcFromBase64(saved.gradeResult.overlay_png_base64)
     }
   } catch (e) {
     return null

@@ -104,15 +104,6 @@ function roiToImageBox(roi, layout, frameW, frameH) {
   }
 }
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = () => reject(new Error('이미지를 읽지 못했습니다.'))
-    reader.readAsDataURL(file)
-  })
-}
-
 function errorDetail(payload, fallback) {
   const detail = payload && payload.detail
   if (typeof detail === 'string' && detail) return detail
@@ -138,6 +129,8 @@ export default {
       imageSrc: '',
       imageFile: null,
       imageObjectUrl: '',
+      problemImagePath: '',
+      studyIdx: null,
       caseId: '-',
       caseSummary: '',
       problemLoading: false,
@@ -195,6 +188,8 @@ export default {
       this.problemError = ''
       this.rois = []
       this.imageFile = null
+      this.problemImagePath = ''
+      this.studyIdx = null
       this.revokeImageUrl()
       this.imageSrc = ''
 
@@ -216,6 +211,8 @@ export default {
         this.imageFile = new File([blob], filename, {type})
         this.imageObjectUrl = URL.createObjectURL(this.imageFile)
         this.imageSrc = this.imageObjectUrl
+        this.problemImagePath = imagePath(problem.st_image)
+        this.studyIdx = problem.idx ?? null
         this.caseId = String(problem.idx ?? '-').padStart(2, '0')
         this.caseSummary =
             `${stPart.toUpperCase()} · ${stModal} 영상 판독 학습 문제입니다.`
@@ -223,6 +220,8 @@ export default {
         this.caseId = '-'
         this.imageSrc = ''
         this.imageFile = null
+        this.problemImagePath = ''
+        this.studyIdx = null
         this.caseSummary = ''
         this.problemError = e.message || '문제를 불러오지 못했습니다.'
       } finally {
@@ -258,14 +257,18 @@ export default {
       if (box.width <= 0 || box.height <= 0) {
         throw new Error('ROI가 영상 밖에 있습니다.')
       }
-      return { layoutInfo, box }
+      return {layoutInfo, box}
     },
     buildRoiPayload(roi) {
-      const { layoutInfo, box } = this.getNormalizedRoi(roi)
+      const {layoutInfo, box} = this.getNormalizedRoi(roi)
       const form = new FormData()
       form.append('image', this.imageFile, this.imageFile.name)
       form.append('normalized', 'true')
       form.append('include_overlay', 'true')
+      form.append('user_idx', '1') // 로그인 idx 값 넣어야함
+      if (this.studyIdx != null) {
+        form.append('study_idx', String(this.studyIdx))
+      }
 
       if (roi.type === 'circle') {
         const cx = box.x + box.width / 2
@@ -281,7 +284,7 @@ export default {
         form.append('cx', String(cx))
         form.append('cy', String(cy))
         form.append('radius', String(radius))
-        return { form, box }
+        return {form, box}
       }
 
       form.append('roi_type', 'box')
@@ -289,7 +292,7 @@ export default {
       form.append('y', String(box.y))
       form.append('width', String(box.width))
       form.append('height', String(box.height))
-      return { form, box }
+      return {form, box}
     },
     async onSubmit() {
       if (this.submitting) return
@@ -306,7 +309,7 @@ export default {
       this.submitting = true
 
       try {
-        const { form, box } = this.buildRoiPayload(roi)
+        const {form, box} = this.buildRoiPayload(roi)
         const res = await fetch(ROI_GRADE_API, {
           method: 'POST',
           body: form
@@ -316,26 +319,29 @@ export default {
           throw new Error(errorDetail(data, `채점 오류 (${res.status})`))
         }
 
-        const imageDataUrl = await fileToDataUrl(this.imageFile)
         const region = this.$route.query.region || 'brain'
         const type = this.$route.query.type || 'CT'
+        const overlayPath = data.overlay_png_base64 && data.rn_image ? data.rn_image : ''
         const payload = {
           caseId: this.caseId,
+          studyIdx: this.studyIdx,
+          reviewIdx: data.review_idx || null,
           region,
           type,
-          imageDataUrl,
-          userRoi: { type: roi.type, ...box },
-          gradeResult: data
+          imagePath: this.problemImagePath,
+          overlayPath,
+          userRoi: {type: roi.type, ...box},
+          gradeResult: {...data, overlay_png_base64: overlayPath ? null : data.overlay_png_base64}
         }
         try {
           sessionStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(payload))
         } catch (err) {
-          payload.gradeResult = { ...data, overlay_png_base64: null }
+          payload.gradeResult = {...payload.gradeResult, overlay_png_base64: null}
           sessionStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(payload))
         }
         await this.$router.push({
           path: '/medical/review',
-          query: { region, type, idx: this.caseId }
+          query: {region, type, idx: this.caseId}
         })
       } catch (e) {
         alert(e.message || '채점에 실패했습니다.')
