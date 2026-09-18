@@ -14,14 +14,28 @@
       <button type="button" class="btn primary" @click="$emit('done')">
         풀이완료
       </button>
+      <button type="button" class="btn ghost" @click="onLogout">
+        로그아웃
+      </button>
     </div>
   </header>
 </template>
 
 <script>
+import { clearUserSession } from '../../login/authSession'
+
+const REVIEW_STORAGE_KEY = 'medlens.review'
+
 export default {
   name: 'ReviewHeader',
-  emits: ['next', 'done']
+  emits: ['next', 'done'],
+  methods: {
+    onLogout() {
+      clearUserSession()
+      sessionStorage.removeItem(REVIEW_STORAGE_KEY)
+      this.$router.push('/login')
+    }
+  }
 }
 </script>
 

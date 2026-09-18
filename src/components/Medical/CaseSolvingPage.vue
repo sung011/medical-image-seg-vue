@@ -45,6 +45,7 @@ import CaseInfoBar from './CaseInfoBar.vue'
 import RoiToolbar from './RoiToolbar.vue'
 import XrayViewer from './XrayViewer.vue'
 import TermDictionary from './TermDictionary.vue'
+import { getUserSession } from '../login/authSession'
 
 const PROBLEM_API = 'http://127.0.0.1:8000/learning/problem'
 const ROI_GRADE_API = 'http://127.0.0.1:8000/learning/roi-grade'
@@ -194,11 +195,21 @@ export default {
       this.imageSrc = ''
 
       try {
-        const url =
-            `${PROBLEM_API}?st_part=${encodeURIComponent(stPart)}` +
-            `&st_modal=${encodeURIComponent(stModal)}`
-        const res = await fetch(url)
-        if (!res.ok) throw new Error(`API 오류 (${res.status})`)
+        const user = getUserSession()
+        const params = new URLSearchParams({
+          st_part: stPart,
+          st_modal: stModal
+        })
+        if (user?.idx != null) {
+          params.set('user_idx', String(user.idx))
+        }
+        const res = await fetch(`${PROBLEM_API}?${params}`)
+        if (!res.ok) {
+          if (res.status === 404) {
+            throw new Error('풀 수 있는 새 문제가 없습니다.')
+          }
+          throw new Error(`API 오류 (${res.status})`)
+        }
         const data = await res.json()
         if (!data.ok || !data.problem) {
           throw new Error('문제를 불러오지 못했습니다.')
@@ -265,7 +276,8 @@ export default {
       form.append('image', this.imageFile, this.imageFile.name)
       form.append('normalized', 'true')
       form.append('include_overlay', 'true')
-      form.append('user_idx', '1') // 로그인 idx 값 넣어야함
+      const user = getUserSession()
+      form.append('user_idx', String(user?.idx ?? 1))
       if (this.studyIdx != null) {
         form.append('study_idx', String(this.studyIdx))
       }

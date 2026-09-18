@@ -59,6 +59,13 @@ function mapItem(item) {
   }
 }
 
+const REGION_LABELS = {
+  brain: '뇌',
+  chest: '흉부',
+  abdomen: '복부',
+  knee: '무릎'
+}
+
 export default {
   name: 'TermDictionary',
   data() {
@@ -78,7 +85,9 @@ export default {
     metaLabel() {
       if (!this.region && !this.type) return ''
       const parts = []
-      if (this.region) parts.push(this.region)
+      if (this.region) {
+        parts.push(REGION_LABELS[this.region] || this.region)
+      }
       if (this.type) parts.push(this.type)
       return `${parts.join(' · ')} · ${this.count}개`
     },
