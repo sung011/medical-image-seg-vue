@@ -15,19 +15,35 @@
     </div>
 
     <div class="med-header__right">
-      <button type="button" class="guide-btn" @click="onGuide">
-        <i class="fa fa-question-circle" aria-hidden="true"/>
-        <span>가이드</span>
-      </button>
-      <span class="guide-btn">{{ user.user_name }}</span>
+      <div class="guide-menu" ref="guideMenu">
+        <button
+            type="button"
+            class="guide-btn"
+            :aria-expanded="guideOpen ? 'true' : 'false'"
+            aria-controls="solving-guide"
+            @click="onGuide"
+        >
+          <i class="fa fa-question-circle" aria-hidden="true"/>
+          <span>가이드</span>
+        </button>
+        <div v-if="guideOpen" id="solving-guide" class="guide-panel" role="region" aria-label="풀이 방법">
+          <p class="guide-panel__title">풀이 방법</p>
+          <ol>
+            <li>원 또는 박스를 고른 뒤 영상 위를 드래그해 영역을 지정합니다. 지우기로 지울 수 있습니다.</li>
+            <li>제출을 누르면 그린 영역 중 마지막 ROI로 채점합니다.</li>
+            <li>채점이 끝나면 리뷰 화면에서 판정과 오버레이를 확인합니다.</li>
+          </ol>
+        </div>
+      </div>
       <div v-if="user" class="user-menu" ref="userMenu">
+        <span class="guide-btn">{{ user.user_name }}</span>
         <button
             type="button"
             class="avatar-btn"
             :aria-expanded="menuOpen ? 'true' : 'false'"
             aria-haspopup="true"
             :title="user.user_name || user.user_id"
-            @click="menuOpen = !menuOpen"
+            @click="onUserMenu"
         >
           <i class="fa fa-user" aria-hidden="true"/>
         </button>
@@ -60,7 +76,8 @@ export default {
   data() {
     return {
       user: getUserSession(),
-      menuOpen: false
+      menuOpen: false,
+      guideOpen: false
     }
   },
   computed: {
@@ -92,9 +109,22 @@ export default {
       if (menu && !menu.contains(e.target)) {
         this.menuOpen = false
       }
+      const guide = this.$refs.guideMenu
+      if (guide && !guide.contains(e.target)) {
+        this.guideOpen = false
+      }
     },
     onGuide() {
-      window.alert('가이드 준비 중입니다.')
+      this.guideOpen = !this.guideOpen
+      if (this.guideOpen) {
+        this.menuOpen = false
+      }
+    },
+    onUserMenu() {
+      this.menuOpen = !this.menuOpen
+      if (this.menuOpen) {
+        this.guideOpen = false
+      }
     },
     onLogout() {
       this.menuOpen = false
@@ -236,8 +266,48 @@ export default {
   font-size: 15px;
 }
 
+.guide-menu {
+  position: relative;
+}
+
+.guide-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  padding: 12px 14px;
+  border: 1px solid #e5e9f0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(26, 43, 76, 0.12);
+  text-align: left;
+  z-index: 20;
+}
+
+.guide-panel__title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a2b4c;
+}
+
+.guide-panel ol {
+  margin: 0;
+  padding-left: 18px;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.guide-panel li + li {
+  margin-top: 6px;
+}
+
 .user-menu {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .avatar-btn {

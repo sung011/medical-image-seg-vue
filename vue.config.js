@@ -10,8 +10,11 @@ module.exports = defineConfig({
         },
         proxy: {
             '/stylesheets': {
-                target: 'http://125.134.136.59:3333',
-                changeOrigin: true
+                target: 'https://olleh7531.synology.me',
+                changeOrigin: true,
+                pathRewrite: {
+                    '^/stylesheets': '/mu_shop/public/stylesheets'
+                }
             }
         }
     }

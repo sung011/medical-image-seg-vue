@@ -5,6 +5,14 @@ import CaseSolvingPage from '../components/Medical/CaseSolvingPage.vue'
 import CaseReviewPage from '../components/Medical/review/CaseReviewPage.vue'
 import { getUserSession } from '../components/login/authSession'
 
+function requireSession(to, from, next) {
+    if (!getUserSession()) {
+        next('/login')
+        return
+    }
+    next()
+}
+
 const router = createRouter({
     history: createWebHistory(),
     routes: [
@@ -29,11 +37,13 @@ const router = createRouter({
         },
         {
             path: '/medical',
-            component: CaseSolvingPage
+            component: CaseSolvingPage,
+            beforeEnter: requireSession
         },
         {
             path: '/medical/review',
-            component: CaseReviewPage
+            component: CaseReviewPage,
+            beforeEnter: requireSession
         }
     ]
 })

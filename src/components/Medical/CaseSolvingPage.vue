@@ -45,11 +45,11 @@ import CaseInfoBar from './CaseInfoBar.vue'
 import RoiToolbar from './RoiToolbar.vue'
 import XrayViewer from './XrayViewer.vue'
 import TermDictionary from './TermDictionary.vue'
-import { getUserSession } from '../login/authSession'
+import {getUserSession} from '../login/authSession'
 
 const PROBLEM_API = 'http://127.0.0.1:8000/learning/problem'
 const ROI_GRADE_API = 'http://127.0.0.1:8000/learning/roi-grade'
-const IMAGE_BASE = 'http://125.134.136.59:3333'
+const IMAGE_BASE = 'https://olleh7531.synology.me/mu_shop/public'
 const REVIEW_STORAGE_KEY = 'medlens.review'
 
 function imagePath(path) {
