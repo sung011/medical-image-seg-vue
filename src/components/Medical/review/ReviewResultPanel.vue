@@ -3,6 +3,7 @@
     <div class="result-head">
       <h2>결과</h2>
       <span class="badge" :class="resultClass">{{ resultLabel }}</span>
+      <span v-if="sliceLabel" class="slice-badge">{{ sliceLabel }}</span>
     </div>
     <p class="feedback">{{ feedbackText }}</p>
 
@@ -73,6 +74,18 @@ export default {
     usingMock: {
       type: Boolean,
       default: false
+    },
+    type: {
+      type: String,
+      default: ''
+    },
+    sliceIndex: {
+      type: Number,
+      default: null
+    },
+    sliceTotal: {
+      type: Number,
+      default: null
     }
   },
   data() {
@@ -87,17 +100,27 @@ export default {
     resultClass() {
       return gradeResultClass(this.grade.result)
     },
+    sliceLabel() {
+      if (String(this.type).toUpperCase() !== 'MRI') return ''
+      if (this.sliceIndex == null || !Number.isFinite(this.sliceIndex)) return ''
+      const current = this.sliceIndex + 1
+      if (this.sliceTotal != null && this.sliceTotal > 0) {
+        return `슬라이스 ${current} / ${this.sliceTotal}`
+      }
+      return `슬라이스 ${current}`
+    },
     feedbackText() {
       if (this.usingMock) {
         return '정답 병변을 부분적으로 포함했으나 범위가 정답보다 넓습니다. 정상 폐실질 및 심 음영을 확인해주세요.'
       }
+      const sliceHint = this.sliceLabel ? ` (${this.sliceLabel})` : ''
       if (this.grade.result === '정답') {
-        return '정답 병변을 잘 포함했습니다. 선택한 범위가 실제 이상 부위와 대체로 일치합니다.'
+        return `정답 병변을 잘 포함했습니다. 선택한 범위가 실제 이상 부위와 대체로 일치합니다.${sliceHint}`
       }
       if (this.grade.result === '부분정답') {
-        return '정답 병변을 부분적으로 포함했으나 범위가 정답과 완전히 같지는 않습니다. 색칠된 위치와 비교해 보세요.'
+        return `정답 병변을 부분적으로 포함했으나 범위가 정답과 완전히 같지는 않습니다. 색칠된 위치와 비교해 보세요.${sliceHint}`
       }
-      return '선택한 영역이 정답 병변과 거의 겹치지 않습니다. 색칠된 정답 위치를 다시 확인해 주세요.'
+      return `선택한 영역이 정답 병변과 거의 겹치지 않습니다. 색칠된 정답 위치를 다시 확인해 주세요.${sliceHint}`
     },
     answerShape() {
       const box = this.grade.abnormality_bbox
@@ -187,6 +210,14 @@ h2 {
 .badge.wrong {
   background: #fee2e2;
   color: #991b1b;
+}
+.slice-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e0f2fe;
+  color: #075985;
 }
 .feedback {
   margin: 8px 0 12px;

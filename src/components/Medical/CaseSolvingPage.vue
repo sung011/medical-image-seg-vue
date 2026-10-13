@@ -25,11 +25,16 @@
               :image-src="imageSrc"
               :rois="rois"
               :tool="tool"
+              :slice-index="sliceIndex"
+              :slice-total="sliceTotal"
+              :slice-loading="sliceLoading"
               @add-roi="addRoi"
               @remove-roi="removeRoi"
+              @update:slice-index="onSliceIndex"
           />
           <p class="footer-hint">
             ⓘ 원본 의료 영상 파일과 ROI 좌표를 그대로 제출합니다. 여러 개를 그리면 마지막 ROI로 채점합니다.
+            <template v-if="isMri && slicePaths.length > 1"> MRI는 슬라이더·마우스 휠로 슬라이스를 바꾼 뒤, 보이는 장으로 제출합니다.</template>
           </p>
         </div>
       </section>
@@ -51,6 +56,8 @@ const PROBLEM_API = 'http://127.0.0.1:8000/learning/problem'
 const ROI_GRADE_API = 'http://127.0.0.1:8000/learning/roi-grade'
 const IMAGE_BASE = 'https://olleh7531.synology.me/mu_shop/public'
 const REVIEW_STORAGE_KEY = 'medlens.review'
+const SLICE_CACHE_MAX = 48
+const PREFETCH_RADIUS = 4
 
 function imagePath(path) {
   if (!path) return ''
@@ -69,6 +76,43 @@ function filenameFromPath(path) {
   const clean = imagePath(path).split('?')[0]
   const name = clean.split('/').pop()
   return name || 'upload.png'
+}
+
+/** MRI만 경로 배열을 쓰고, 그 외는 단일 경로 한 장으로 맞춘다. */
+function normalizeStImages(stImage, isMri) {
+  const asList = (value) => {
+    if (Array.isArray(value)) {
+      return value.map((item) => imagePath(item)).filter(Boolean)
+    }
+    if (typeof value !== 'string') return []
+    const trimmed = value.trim()
+    if (!trimmed) return []
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => imagePath(item)).filter(Boolean)
+        }
+      } catch (_) {
+        /* 단일 경로로 처리 */
+      }
+    }
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      const inner = trimmed.slice(1, -1).trim()
+      if (!inner) return []
+      return inner
+          .split(',')
+          .map((part) => imagePath(part.trim().replace(/^"|"$/g, '')))
+          .filter(Boolean)
+    }
+    const one = imagePath(trimmed)
+    return one ? [one] : []
+  }
+
+  const paths = asList(stImage)
+  if (!paths.length) return []
+  if (isMri) return paths
+  return [paths[0]]
 }
 
 function clamp01(n) {
@@ -131,6 +175,11 @@ export default {
       imageFile: null,
       imageObjectUrl: '',
       problemImagePath: '',
+      slicePaths: [],
+      sliceIndex: 0,
+      shownSliceIndex: 0,
+      sliceLoading: false,
+      sliceLoadToken: 0,
       studyIdx: null,
       caseId: '-',
       caseSummary: '',
@@ -138,6 +187,19 @@ export default {
       problemError: '',
       submitting: false
     }
+  },
+  computed: {
+    isMri() {
+      return String(this.$route.query.type || '').toUpperCase() === 'MRI'
+    },
+    sliceTotal() {
+      return this.slicePaths.length > 1 ? this.slicePaths.length : 0
+    }
+  },
+  created() {
+    this.sliceCache = new Map()
+    this.sliceInflight = new Map()
+    this.sliceAccessOrder = []
   },
   watch: {
     '$route.query': {
@@ -148,13 +210,51 @@ export default {
     }
   },
   beforeUnmount() {
-    this.revokeImageUrl()
+    this.sliceLoadToken += 1
+    this.clearSliceCache()
   },
   methods: {
-    revokeImageUrl() {
-      if (this.imageObjectUrl) {
-        URL.revokeObjectURL(this.imageObjectUrl)
-        this.imageObjectUrl = ''
+    touchCacheKey(path) {
+      const order = this.sliceAccessOrder
+      const at = order.indexOf(path)
+      if (at >= 0) order.splice(at, 1)
+      order.push(path)
+    },
+    clearSliceCache() {
+      if (this.sliceCache) {
+        for (const entry of this.sliceCache.values()) {
+          if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
+        }
+        this.sliceCache.clear()
+      }
+      if (this.sliceInflight) this.sliceInflight.clear()
+      this.sliceAccessOrder = []
+      this.imageObjectUrl = ''
+      this.imageSrc = ''
+      this.imageFile = null
+    },
+    trimSliceCache(keepIndex) {
+      if (!this.sliceCache || this.sliceCache.size <= SLICE_CACHE_MAX) return
+      const keep = new Set()
+      const start = Math.max(0, keepIndex - PREFETCH_RADIUS)
+      const end = Math.min(this.slicePaths.length - 1, keepIndex + PREFETCH_RADIUS)
+      for (let i = start; i <= end; i += 1) {
+        const path = this.slicePaths[i]
+        if (path) keep.add(path)
+      }
+      while (this.sliceCache.size > SLICE_CACHE_MAX && this.sliceAccessOrder.length) {
+        const oldest = this.sliceAccessOrder[0]
+        if (keep.has(oldest)) {
+          this.sliceAccessOrder.push(this.sliceAccessOrder.shift())
+          if (this.sliceAccessOrder.every((key) => keep.has(key))) break
+          continue
+        }
+        this.sliceAccessOrder.shift()
+        const entry = this.sliceCache.get(oldest)
+        if (entry?.objectUrl && entry.objectUrl !== this.imageSrc) {
+          URL.revokeObjectURL(entry.objectUrl)
+        }
+        this.sliceCache.delete(oldest)
       }
     },
     async fetchOriginalImage(path) {
@@ -182,17 +282,103 @@ export default {
       }
       throw lastError || new Error('원본 이미지를 가져오지 못했습니다.')
     },
+    async ensureSliceEntry(path) {
+      const cached = this.sliceCache.get(path)
+      if (cached) {
+        this.touchCacheKey(path)
+        return cached
+      }
+      const pending = this.sliceInflight.get(path)
+      if (pending) return pending
+
+      const request = this.fetchOriginalImage(path)
+          .then((blob) => {
+            const filename = filenameFromPath(path)
+            const type = blob.type || 'image/png'
+            const file = new File([blob], filename, {type})
+            const objectUrl = URL.createObjectURL(file)
+            const entry = {file, objectUrl}
+            this.sliceCache.set(path, entry)
+            this.touchCacheKey(path)
+            this.sliceInflight.delete(path)
+            return entry
+          })
+          .catch((err) => {
+            this.sliceInflight.delete(path)
+            throw err
+          })
+      this.sliceInflight.set(path, request)
+      return request
+    },
+    prefetchAround(index) {
+      if (this.slicePaths.length <= 1) return
+      const start = Math.max(0, index - PREFETCH_RADIUS)
+      const end = Math.min(this.slicePaths.length - 1, index + PREFETCH_RADIUS)
+      for (let i = start; i <= end; i += 1) {
+        if (i === index) continue
+        const path = this.slicePaths[i]
+        if (!path || this.sliceCache.has(path) || this.sliceInflight.has(path)) continue
+        this.ensureSliceEntry(path).catch(() => {})
+      }
+    },
+    async applySlice(index, {clearRois = false} = {}) {
+      const path = this.slicePaths[index]
+      if (!path) {
+        throw new Error('영상 경로가 없습니다.')
+      }
+      const token = ++this.sliceLoadToken
+      const cacheHit = this.sliceCache.has(path)
+      if (!cacheHit) this.sliceLoading = true
+      try {
+        const entry = await this.ensureSliceEntry(path)
+        if (token !== this.sliceLoadToken) return
+        this.imageFile = entry.file
+        this.imageObjectUrl = entry.objectUrl
+        this.imageSrc = entry.objectUrl
+        this.problemImagePath = path
+        this.sliceIndex = index
+        this.shownSliceIndex = index
+        if (clearRois) this.rois = []
+        this.trimSliceCache(index)
+        this.prefetchAround(index)
+      } finally {
+        if (token === this.sliceLoadToken) {
+          this.sliceLoading = false
+        }
+      }
+    },
+    async onSliceIndex(nextIndex) {
+      if (this.problemLoading || this.submitting) return
+      const max = this.slicePaths.length - 1
+      if (max < 0) return
+      const index = Math.min(max, Math.max(0, Number(nextIndex) || 0))
+      if (index === this.shownSliceIndex && this.imageSrc && index === this.sliceIndex) {
+        return
+      }
+      const previousIndex = this.shownSliceIndex
+      this.sliceIndex = index
+      if (index !== previousIndex) this.rois = []
+      try {
+        await this.applySlice(index)
+      } catch (e) {
+        this.sliceIndex = this.shownSliceIndex
+        alert(e.message || '슬라이스를 불러오지 못했습니다.')
+      }
+    },
     async fetchProblem() {
       const stPart = this.$route.query.region || 'brain'
       const stModal = this.$route.query.type || 'CT'
+      const isMri = String(stModal).toUpperCase() === 'MRI'
       this.problemLoading = true
       this.problemError = ''
       this.rois = []
-      this.imageFile = null
       this.problemImagePath = ''
+      this.slicePaths = []
+      this.sliceIndex = 0
+      this.shownSliceIndex = 0
       this.studyIdx = null
-      this.revokeImageUrl()
-      this.imageSrc = ''
+      this.sliceLoadToken += 1
+      this.clearSliceCache()
 
       try {
         const user = getUserSession()
@@ -216,22 +402,24 @@ export default {
         }
 
         const problem = data.problem
-        const blob = await this.fetchOriginalImage(problem.st_image)
-        const filename = filenameFromPath(problem.st_image)
-        const type = blob.type || 'image/png'
-        this.imageFile = new File([blob], filename, {type})
-        this.imageObjectUrl = URL.createObjectURL(this.imageFile)
-        this.imageSrc = this.imageObjectUrl
-        this.problemImagePath = imagePath(problem.st_image)
+        const paths = normalizeStImages(problem.st_image, isMri)
+        if (!paths.length) {
+          throw new Error('영상 경로가 없습니다.')
+        }
+        this.slicePaths = paths
+        await this.applySlice(0, {clearRois: true})
         this.studyIdx = problem.idx ?? null
         this.caseId = String(problem.idx ?? '-').padStart(2, '0')
+        const sliceNote = isMri ? ` · 슬라이스 ${paths.length}장` : ''
         this.caseSummary =
-            `${stPart.toUpperCase()} · ${stModal} 영상 판독 학습 문제입니다.`
+            `${stPart.toUpperCase()} · ${stModal} 영상 판독 학습 문제입니다.${sliceNote}`
       } catch (e) {
         this.caseId = '-'
-        this.imageSrc = ''
-        this.imageFile = null
+        this.clearSliceCache()
         this.problemImagePath = ''
+        this.slicePaths = []
+        this.sliceIndex = 0
+        this.shownSliceIndex = 0
         this.studyIdx = null
         this.caseSummary = ''
         this.problemError = e.message || '문제를 불러오지 못했습니다.'
@@ -272,6 +460,9 @@ export default {
     },
     buildRoiPayload(roi) {
       const {layoutInfo, box} = this.getNormalizedRoi(roi)
+      const region = this.$route.query.region || 'brain'
+      const type = this.$route.query.type || 'CT'
+      const isMri = String(type).toUpperCase() === 'MRI'
       const form = new FormData()
       form.append('image', this.imageFile, this.imageFile.name)
       form.append('normalized', 'true')
@@ -280,6 +471,14 @@ export default {
       form.append('user_idx', String(user?.idx ?? 1))
       if (this.studyIdx != null) {
         form.append('study_idx', String(this.studyIdx))
+      }
+      form.append('st_part', String(region))
+      form.append('st_modal', String(type))
+      if (isMri) {
+        form.append('slice_index', String(this.shownSliceIndex))
+        if (this.problemImagePath) {
+          form.append('image_path', this.problemImagePath)
+        }
       }
 
       if (roi.type === 'circle') {
@@ -296,7 +495,7 @@ export default {
         form.append('cx', String(cx))
         form.append('cy', String(cy))
         form.append('radius', String(radius))
-        return {form, box}
+        return {form, box, region, type, isMri}
       }
 
       form.append('roi_type', 'box')
@@ -304,7 +503,7 @@ export default {
       form.append('y', String(box.y))
       form.append('width', String(box.width))
       form.append('height', String(box.height))
-      return {form, box}
+      return {form, box, region, type, isMri}
     },
     async onSubmit() {
       if (this.submitting) return
@@ -321,7 +520,10 @@ export default {
       this.submitting = true
 
       try {
-        const {form, box} = this.buildRoiPayload(roi)
+        const {form, box, region, type, isMri} = this.buildRoiPayload(roi)
+        if (isMri && !this.problemImagePath) {
+          throw new Error('제출할 MRI 슬라이스 경로가 없습니다.')
+        }
         const res = await fetch(ROI_GRADE_API, {
           method: 'POST',
           body: form
@@ -331,8 +533,6 @@ export default {
           throw new Error(errorDetail(data, `채점 오류 (${res.status})`))
         }
 
-        const region = this.$route.query.region || 'brain'
-        const type = this.$route.query.type || 'CT'
         const overlayPath = data.overlay_png_base64 && data.rn_image ? data.rn_image : ''
         const payload = {
           caseId: this.caseId,
@@ -342,6 +542,8 @@ export default {
           type,
           imagePath: this.problemImagePath,
           overlayPath,
+          sliceIndex: isMri ? this.shownSliceIndex : null,
+          sliceTotal: isMri ? this.slicePaths.length : null,
           userRoi: {type: roi.type, ...box},
           gradeResult: {...data, overlay_png_base64: overlayPath ? null : data.overlay_png_base64}
         }

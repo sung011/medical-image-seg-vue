@@ -65,7 +65,10 @@ export function createDefaultReview() {
     overlaySrc: '',
     userRoi: { ...MOCK_USER_ROI },
     grade: { ...MOCK_GRADE },
-    usingMock: true
+    usingMock: true,
+    type: '',
+    sliceIndex: null,
+    sliceTotal: null
   }
 }
 
@@ -75,6 +78,14 @@ export function loadReviewFromStorage() {
     if (!raw) return null
     const saved = JSON.parse(raw)
     if (!saved || !saved.gradeResult) return null
+    const sliceIndex =
+      saved.sliceIndex != null && Number.isFinite(Number(saved.sliceIndex))
+        ? Number(saved.sliceIndex)
+        : null
+    const sliceTotal =
+      saved.sliceTotal != null && Number.isFinite(Number(saved.sliceTotal))
+        ? Number(saved.sliceTotal)
+        : null
     return {
       usingMock: false,
       grade: saved.gradeResult,
@@ -82,7 +93,10 @@ export function loadReviewFromStorage() {
       userRoi: saved.userRoi || null,
       overlaySrc:
         publicAssetUrl(saved.overlayPath) ||
-        overlaySrcFromBase64(saved.gradeResult.overlay_png_base64)
+        overlaySrcFromBase64(saved.gradeResult.overlay_png_base64),
+      type: saved.type || '',
+      sliceIndex,
+      sliceTotal
     }
   } catch (e) {
     return null

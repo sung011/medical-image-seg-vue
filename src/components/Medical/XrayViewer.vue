@@ -10,7 +10,7 @@
         @reset="resetView"
     />
 
-    <div class="viewport">
+    <div class="viewport" @wheel="onWheel">
       <div class="stage" :style="stageStyle">
         <div ref="imageFrame" class="image-frame">
           <img
@@ -47,8 +47,37 @@
       <div class="overlay-meta">
         <div>W {{ windowW }} / L {{ windowL }}</div>
         <div>Zoom {{ zoom.toFixed(2) }}x</div>
+        <div v-if="hasSlices">Slice {{ sliceIndex + 1 }} / {{ sliceTotal }}</div>
       </div>
       <div class="orient">R</div>
+      <div v-if="hasSlices" class="slice-bar">
+        <button
+            type="button"
+            class="slice-btn"
+            :disabled="sliceLoading || sliceIndex <= 0"
+            @click="stepSlice(-1)"
+        >
+          ◀
+        </button>
+        <input
+            class="slice-range"
+            type="range"
+            min="0"
+            :max="sliceTotal - 1"
+            :value="sliceIndex"
+            :disabled="sliceLoading"
+            @input="onSliceInput"
+        />
+        <button
+            type="button"
+            class="slice-btn"
+            :disabled="sliceLoading || sliceIndex >= sliceTotal - 1"
+            @click="stepSlice(1)"
+        >
+          ▶
+        </button>
+      </div>
+      <p v-if="sliceLoading" class="slice-loading">슬라이스 불러오는 중…</p>
       <p v-if="imageError" class="image-error">이미지를 불러오지 못했습니다.</p>
     </div>
   </div>
@@ -77,9 +106,21 @@ export default {
     overlaySrc: {
       type: String,
       default: ''
+    },
+    sliceIndex: {
+      type: Number,
+      default: 0
+    },
+    sliceTotal: {
+      type: Number,
+      default: 0
+    },
+    sliceLoading: {
+      type: Boolean,
+      default: false
     }
   },
-  emits: ['add-roi', 'remove-roi'],
+  emits: ['add-roi', 'remove-roi', 'update:slice-index'],
   data() {
     return {
       zoom: 1,
@@ -102,10 +143,12 @@ export default {
     },
     imageSrc() {
       this.imageError = false
-      this.resetView()
     }
   },
   computed: {
+    hasSlices() {
+      return this.sliceTotal > 1
+    },
     stageStyle() {
       return {
         transform: `translate(${this.pan.x}px, ${this.pan.y}px) scale(${this.zoom})`,
@@ -185,6 +228,24 @@ export default {
     onPanEnd() {
       this.panning = false
       this.panStart = null
+    },
+    emitSlice(index) {
+      if (!this.hasSlices) return
+      const next = Math.min(this.sliceTotal - 1, Math.max(0, index))
+      if (next === this.sliceIndex) return
+      this.$emit('update:slice-index', next)
+    },
+    stepSlice(delta) {
+      this.emitSlice(this.sliceIndex + delta)
+    },
+    onSliceInput(event) {
+      this.emitSlice(Number(event.target.value))
+    },
+    onWheel(event) {
+      if (!this.hasSlices) return
+      event.preventDefault()
+      if (event.deltaY === 0) return
+      this.stepSlice(event.deltaY > 0 ? 1 : -1)
     }
   }
 }
@@ -284,5 +345,54 @@ export default {
   margin: 0;
   color: #fca5a5;
   background: rgba(0, 0, 0, 0.55);
+}
+
+.slice-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 42px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.slice-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  background: #1e293b;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.slice-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.slice-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: #38bdf8;
+}
+
+.slice-loading {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.75);
 }
 </style>

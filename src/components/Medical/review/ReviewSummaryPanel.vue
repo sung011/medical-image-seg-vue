@@ -1,6 +1,7 @@
 <template>
   <aside class="summary-col">
     <h2>결과 요약</h2>
+    <p v-if="sliceLabel" class="slice-meta">제출 슬라이스 · {{ sliceLabel }}</p>
     <div class="stat-grid">
       <article class="stat-card">
         <span class="stat-icon teal"><i class="fa fa-check"></i></span>
@@ -80,6 +81,18 @@ export default {
     usingMock: {
       type: Boolean,
       default: false
+    },
+    type: {
+      type: String,
+      default: ''
+    },
+    sliceIndex: {
+      type: Number,
+      default: null
+    },
+    sliceTotal: {
+      type: Number,
+      default: null
     }
   },
   data() {
@@ -93,6 +106,15 @@ export default {
     }
   },
   computed: {
+    sliceLabel() {
+      if (String(this.type).toUpperCase() !== 'MRI') return ''
+      if (this.sliceIndex == null || !Number.isFinite(this.sliceIndex)) return ''
+      const current = this.sliceIndex + 1
+      if (this.sliceTotal != null && this.sliceTotal > 0) {
+        return `${current} / ${this.sliceTotal}`
+      }
+      return String(current)
+    },
     diseaseName() {
       return (
         (this.grade.classification && this.grade.classification.top_label_ko) ||
@@ -206,6 +228,11 @@ h2 {
   margin: 0;
   font-size: 18px;
   color: #0f172a;
+}
+.slice-meta {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #0369a1;
 }
 .stat-grid {
   display: grid;

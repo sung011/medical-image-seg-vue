@@ -8,10 +8,16 @@
         :user-roi="userRoi"
         :grade="grade"
         :using-mock="usingMock"
+        :type="type"
+        :slice-index="sliceIndex"
+        :slice-total="sliceTotal"
       />
       <ReviewSummaryPanel
         :grade="grade"
         :using-mock="usingMock"
+        :type="type"
+        :slice-index="sliceIndex"
+        :slice-total="sliceTotal"
       />
     </main>
   </div>
@@ -41,6 +47,9 @@ export default {
     this.imageSrc = saved.imageSrc
     this.userRoi = saved.userRoi
     this.overlaySrc = saved.overlaySrc
+    this.type = saved.type || this.$route.query.type || ''
+    this.sliceIndex = saved.sliceIndex
+    this.sliceTotal = saved.sliceTotal
   },
   methods: {
     reviewQuery() {
