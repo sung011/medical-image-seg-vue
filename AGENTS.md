@@ -19,6 +19,7 @@ src/
   components/
     login/             로그인, 세션
     signup/            회원가입
+    main/              로그인 후 홈 (인사, 바로가기, 학습 현황)
     Medical/           문제 풀이 (영상, ROI, 용어)
     Medical/review/    채점 리뷰
 ```

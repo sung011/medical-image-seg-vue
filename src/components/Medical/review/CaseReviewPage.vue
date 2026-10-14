@@ -62,7 +62,7 @@ export default {
       this.$router.push({ path: '/medical', query: this.reviewQuery() })
     },
     onDone() {
-      this.$router.push({ path: '/medical', query: this.reviewQuery() })
+      this.$router.push('/main')
     }
   }
 }

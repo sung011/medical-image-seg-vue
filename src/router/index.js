@@ -3,7 +3,8 @@ import SignUpPage from '../components/signup/SignUpPage.vue'
 import LoginPage from '../components/login/LoginPage.vue'
 import CaseSolvingPage from '../components/Medical/CaseSolvingPage.vue'
 import CaseReviewPage from '../components/Medical/review/CaseReviewPage.vue'
-import { getUserSession } from '../components/login/authSession'
+import indexPage from '../components/main/indexPage.vue'
+import {getUserSession} from '../components/login/authSession'
 
 function requireSession(to, from, next) {
     if (!getUserSession()) {
@@ -43,6 +44,11 @@ const router = createRouter({
         {
             path: '/medical/review',
             component: CaseReviewPage,
+            beforeEnter: requireSession
+        },
+        {
+            path: '/main',
+            component: indexPage,
             beforeEnter: requireSession
         }
     ]
