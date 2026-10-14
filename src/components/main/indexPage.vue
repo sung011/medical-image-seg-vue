@@ -8,7 +8,7 @@
         <div class="hero__text">
           <h1 class="hero__title">안녕하세요, {{ displayName }}님</h1>
           <p class="hero__subtitle">오늘도 지속적인 학습으로 목표를 향해 나아가요!</p>
-          <router-link class="hero__cta" to="/medical?region=brain&type=CT">
+          <router-link class="hero__cta" to="/learning">
             학습하기
             <span class="hero__cta-arrow" aria-hidden="true">›</span>
           </router-link>
@@ -17,7 +17,7 @@
       </section>
 
       <section class="nav-cards" aria-label="바로가기">
-        <router-link class="nav-card" to="/medical?region=brain&type=CT">
+        <router-link class="nav-card" to="/learning">
           <h2 class="nav-card__title">학습 시작</h2>
           <p class="nav-card__desc">새로운 문제를 시작하거나 이어갈 수 있어요.</p>
         </router-link>

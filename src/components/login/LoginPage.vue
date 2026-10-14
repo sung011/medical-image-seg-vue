@@ -58,7 +58,7 @@ export default {
         }
 
         saveUserSession(data)
-        await this.$router.push('/medical?region=brain&type=CT')
+        await this.$router.push('/main')
       } catch (e) {
         this.errorMessage = e.message || '로그인에 실패했습니다.'
       } finally {

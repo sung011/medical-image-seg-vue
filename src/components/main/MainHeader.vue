@@ -3,7 +3,7 @@
     <div class="main-header">
       <router-link class="main-header__brand" to="/main">MedLens</router-link>
       <nav class="main-header__nav" aria-label="메인 메뉴">
-        <router-link class="main-header__link" to="/medical?region=brain&type=CT">학습</router-link>
+        <router-link class="main-header__link" to="/learning">학습</router-link>
         <a class="main-header__link" href="#" @click.prevent>오답노트</a>
         <a class="main-header__link" href="#" @click.prevent>마이페이지</a>
       </nav>

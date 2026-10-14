@@ -4,6 +4,7 @@ import LoginPage from '../components/login/LoginPage.vue'
 import CaseSolvingPage from '../components/Medical/CaseSolvingPage.vue'
 import CaseReviewPage from '../components/Medical/review/CaseReviewPage.vue'
 import indexPage from '../components/main/indexPage.vue'
+import LearningSetupPage from '../components/learning/LearningSetupPage.vue'
 import {getUserSession} from '../components/login/authSession'
 
 function requireSession(to, from, next) {
@@ -19,7 +20,7 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            redirect: () => (getUserSession() ? '/medical?region=brain&type=CT' : '/login')
+            redirect: () => (getUserSession() ? '/main' : '/login')
         },
         {
             path: '/signup',
@@ -30,7 +31,7 @@ const router = createRouter({
             component: LoginPage,
             beforeEnter(to, from, next) {
                 if (getUserSession()) {
-                    next('/medical?region=brain&type=CT')
+                    next('/main')
                     return
                 }
                 next()
@@ -49,6 +50,11 @@ const router = createRouter({
         {
             path: '/main',
             component: indexPage,
+            beforeEnter: requireSession
+        },
+        {
+            path: '/learning',
+            component: LearningSetupPage,
             beforeEnter: requireSession
         }
     ]
