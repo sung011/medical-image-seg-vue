@@ -22,6 +22,8 @@
       </article>
     </div>
 
+    <p v-if="germinomaTitle" class="germinoma-meta">{{ germinomaTitle }}</p>
+
     <ReviewAccordion
       title="병명 해설"
       :open="open.explain"
@@ -35,7 +37,30 @@
       :open="open.findings"
       @toggle="toggle('findings')"
     >
-      <ul class="bullets">
+      <template v-if="!usingMock && (ichFindings.length || germinomaFindings.length)">
+        <p v-if="ichFindings.length" class="findings-group">출혈 (ICH)</p>
+        <ul v-if="ichFindings.length" class="prob-list">
+          <li v-for="item in ichFindings" :key="'ich-' + (item.label || item.label_ko)">
+            <div class="prob-row">
+              <span>{{ item.label_ko || item.label }}</span>
+              <strong>{{ scorePercent(item.score) }}%</strong>
+            </div>
+            <div class="bar"><span :style="{ width: scorePercent(item.score) + '%' }"></span></div>
+          </li>
+        </ul>
+        <p v-if="germinomaFindings.length" class="findings-group">Germinoma</p>
+        <ul v-if="germinomaFindings.length" class="prob-list">
+          <li v-for="item in germinomaFindings" :key="'g-' + (item.label || item.label_ko)">
+            <div class="prob-row">
+              <span>{{ item.label_ko || item.label }}</span>
+              <strong>{{ scorePercent(item.score) }}%</strong>
+            </div>
+            <div class="bar"><span :style="{ width: scorePercent(item.score) + '%' }"></span></div>
+          </li>
+        </ul>
+        <p v-if="grade.overlay_summary" class="overlay-note">{{ grade.overlay_summary }}</p>
+      </template>
+      <ul v-else class="bullets">
         <li v-for="(item, i) in findingLines" :key="i">{{ item }}</li>
       </ul>
     </ReviewAccordion>
@@ -115,11 +140,38 @@ export default {
       }
       return String(current)
     },
+    germinoma() {
+      return this.grade.germinoma || null
+    },
+    ichFindings() {
+      const findings =
+        (this.grade.classification && this.grade.classification.findings) || []
+      return findings
+    },
+    germinomaFindings() {
+      if (!this.germinoma) return []
+      return this.germinoma.findings || []
+    },
+    germinomaTitle() {
+      if (!this.germinoma) return ''
+      const name = this.germinoma.top_label_ko || this.germinoma.top_label || '생식세포종양'
+      const pct = this.scorePercent(this.germinoma.confidence)
+      return `Germinoma · ${name} ${pct}%`
+    },
     diseaseName() {
-      return (
+      const ich =
         (this.grade.classification && this.grade.classification.top_label_ko) ||
-        '폐 결절'
-      )
+        ''
+      if (ich && this.germinoma) {
+        const gName =
+          this.germinoma.top_label_ko || this.germinoma.top_label || '생식세포종양'
+        return `${ich} · ${gName}`
+      }
+      if (ich) return ich
+      if (this.germinoma) {
+        return this.germinoma.top_label_ko || this.germinoma.top_label || '생식세포종양'
+      }
+      return '폐 결절'
     },
     coveragePercent() {
       const value = Number(this.grade.recall)
@@ -139,76 +191,89 @@ export default {
     explanationLines() {
       if (this.usingMock) {
         return [
-          '폐 결절은 폐 실질 내에 보이는 3cm 미만의 국소적인 음영입니다.',
-          '양성 결절과 악성 결절의 감별이 중요하며, 크기·모양·위치를 종합적으로 평가합니다.'
+          '출혈(ICH)과 생식세포종양(germinoma) 분류 결과를 함께 확인할 수 있습니다.',
+          '위치와 범위를 정답 표시·오버레이와 비교해 보세요.'
         ]
       }
-      const name = this.diseaseName
-      const summary = this.grade.overlay_summary
       const lines = [
-        `${name}으로 추정되는 이상 부위입니다. 위치와 범위를 정답 표시와 비교해 보세요.`
+        `${this.diseaseName}으로 추정되는 이상 부위입니다. 위치와 범위를 정답 표시와 비교해 보세요.`
       ]
-      if (summary) lines.push(summary)
+      if (this.grade.overlay_summary) lines.push(this.grade.overlay_summary)
+      if (this.germinomaTitle) lines.push(this.germinomaTitle)
       return lines
     },
     findingLines() {
       if (this.usingMock) {
         return [
-          '우측 중폐야 경계가 비교적 명확한 결절성 음영 관찰됨',
-          '주변 폐 실질에 특이 소견 관찰되지 않음',
-          '늑골, 횡격막 이상 소견 관찰되지 않음'
+          '출혈 (ICH): 지주막하출혈 82%, 두개내출혈 81%',
+          'Germinoma: 생식세포종양 36%',
+          '정답 오버레이와 선택한 ROI 범위를 비교해 보세요.'
         ]
       }
-      const findings =
-        (this.grade.classification && this.grade.classification.findings) || []
-      const top = findings.slice(0, 3).map((item) => {
-        const label = item.label_ko || item.label
-        const score = Number(item.score)
-        const pct = Number.isFinite(score) ? ` (${Math.round(score * 100)}%)` : ''
-        return `${label}${pct}`
+      const lines = []
+      if (this.grade.overlay_summary) lines.push(this.grade.overlay_summary)
+      this.ichFindings.slice(0, 3).forEach((item) => {
+        lines.push(
+          `${item.label_ko || item.label} (${this.scorePercent(item.score)}%)`
+        )
       })
-      if (this.grade.overlay_summary) top.unshift(this.grade.overlay_summary)
-      return top.length
-        ? top
+      this.germinomaFindings.forEach((item) => {
+        lines.push(
+          `Germinoma · ${item.label_ko || item.label} (${this.scorePercent(item.score)}%)`
+        )
+      })
+      return lines.length
+        ? lines
         : ['표시된 이상 부위를 기준으로 소견을 확인해 주세요.']
     },
     terms() {
       if (this.usingMock) {
         return [
-          '폐결절(nodule)',
-          '고형결절(solid nodule)',
-          '악성가능성(nodule)',
-          '중폐야(middle lobe)'
+          '지주막하출혈(subarachnoid)',
+          '두개내출혈(any)',
+          '생식세포종양(germinoma)'
         ]
       }
-      const findings =
-        (this.grade.classification && this.grade.classification.findings) || []
-      const chips = findings.slice(0, 4).map((item) => {
-        if (item.label_ko && item.label) return `${item.label_ko}(${item.label})`
-        return item.label_ko || item.label
+      const chips = []
+      this.ichFindings.slice(0, 4).forEach((item) => {
+        if (item.label_ko && item.label) chips.push(`${item.label_ko}(${item.label})`)
+        else chips.push(item.label_ko || item.label)
+      })
+      this.germinomaFindings.forEach((item) => {
+        if (item.label_ko && item.label) chips.push(`${item.label_ko}(${item.label})`)
+        else chips.push(item.label_ko || item.label || '생식세포종양')
       })
       return chips.length ? chips : [this.diseaseName]
     },
     references() {
-      const q = encodeURIComponent(
+      const top =
         (this.grade.classification && this.grade.classification.top_label) ||
-          'pulmonary nodule'
-      )
-      return [
+        (this.germinoma && this.germinoma.top_label) ||
+        'intracranial hemorrhage'
+      const q = encodeURIComponent(top)
+      const refs = [
         {
           title: 'Radiopaedia - 검색 결과',
           url: `https://radiopaedia.org/search?lang=us&q=${q}`
-        },
-        {
-          title: 'Fleischner Society Guidelines (2017)',
-          url: 'https://pubs.rsna.org/doi/10.1148/radiol.2017161659'
         }
       ]
+      if (this.germinoma) {
+        refs.push({
+          title: 'Radiopaedia - Germinoma',
+          url: 'https://radiopaedia.org/articles/intracranial-germinoma'
+        })
+      }
+      return refs
     }
   },
   methods: {
     toggle(key) {
       this.open[key] = !this.open[key]
+    },
+    scorePercent(score) {
+      const value = Number(score)
+      if (!Number.isFinite(value)) return 0
+      return Math.round(Math.min(1, Math.max(0, value)) * 100)
     }
   }
 }
@@ -233,6 +298,12 @@ h2 {
   margin: 6px 0 0;
   font-size: 12px;
   color: #0369a1;
+}
+.germinoma-meta {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f766e;
 }
 .stat-grid {
   display: grid;
@@ -288,6 +359,41 @@ h2 {
   height: 100%;
   border-radius: 999px;
   background: #14b8a6;
+}
+.findings-group {
+  margin: 10px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+.findings-group:first-child {
+  margin-top: 0;
+}
+.prob-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.prob-list li + li {
+  margin-top: 8px;
+}
+.prob-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+.prob-row strong {
+  font-size: 13px;
+  color: #0f172a;
+}
+.overlay-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.45;
 }
 .bullets {
   margin: 0;

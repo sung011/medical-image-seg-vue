@@ -228,11 +228,11 @@
           <li>키 이름은 <code>medlens_user</code>다.</li>
           <li>저장하는 필드는 <code>idx</code>, <code>user_id</code>, <code>user_name</code>, <code>mb_level</code>뿐이다.</li>
           <li>읽기에 실패하면 <code>null</code>을 반환한다.</li>
-          <li>헤더에서 로그아웃하면 이 키와 채점 저장 <code>medlens.review</code>를 지우고 <code>/login</code>으로 간다. 이름은 세션이 있을 때만 그려서, 로그아웃 직후 <code>user_name</code>을 읽지 않는다.</li>
+          <li><code>/main</code>·<code>/learning</code>·<code>/medical</code> 헤더에서 이름(또는 아바타)을 누르면 로그아웃이 나온다. 누르면 이 키와 채점 저장 <code>medlens.review</code>를 지우고 <code>/login</code>으로 간다. 이름은 세션이 있을 때만 그려서, 로그아웃 직후 <code>user_name</code>을 읽지 않는다.</li>
         </ol>
         <pre>sessionStorage.getItem('medlens_user')</pre>
         <h3>확인하는 법</h3>
-        <p>로그인 후 개발자 도구 Application 탭에서 해당 키를 본다. 값의 <code>user_name</code>이 헤더에 보여야 한다. 로그아웃하면 키가 없어진다.</p>
+        <p>로그인 후 개발자 도구 Application 탭에서 해당 키를 본다. 값의 <code>user_name</code>이 헤더에 보여야 한다. <code>/main</code>·<code>/learning</code>·<code>/medical</code> 어디에서든 로그아웃하면 키가 없어지고 로그인 화면으로 간다.</p>
       </section>
 
       <section id="signup">
@@ -266,7 +266,7 @@
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>src/components/main/indexPage.vue</code> — 홈 레이아웃, 세션 이름, 바로가기, 부위별 현황 카드.</li>
-          <li><code>src/components/main/MainHeader.vue</code> — MedLens 브랜드와 학습·오답노트·마이페이지 메뉴.</li>
+          <li><code>src/components/main/MainHeader.vue</code> — MedLens 브랜드, 학습·오답노트·마이페이지, 이름·로그아웃 메뉴.</li>
           <li><code>src/components/main/todayStudyStats.js</code> — 부위 라벨과 오늘 학습한 부위만 골라 주는 함수.</li>
           <li><code>src/router/index.js</code> — <code>/main</code> 경로와 세션 검사.</li>
         </ul>
@@ -275,6 +275,7 @@
           <li>주소가 <code>/main</code>이면 <code>requireSession</code>이 세션을 확인한다. 없으면 <code>/login</code>으로 보낸다.</li>
           <li><code>indexPage</code>가 <code>getUserSession()</code>으로 이름을 읽어 "안녕하세요, {이름}님"을 보여 준다.</li>
           <li>"학습하기"와 "학습 시작"은 <code>/learning</code>으로 이동한다. 헤더의 "학습"도 같다.</li>
+          <li>헤더 오른쪽 이름·아바타를 누르면 로그아웃이 나온다. 누르면 세션과 채점 저장을 지우고 <code>/login</code>으로 간다.</li>
           <li>오답노트·마이페이지·학습 기록은 화면이 없어 클릭해도 이동하지 않는다.</li>
           <li><code>getStudiedRegionStats()</code>가 오늘 학습한 부위만 남긴다. 각 부위마다 학습 시간·학습 문제·정답률을 보여 준다. 학습한 부위가 없으면 안내 문구를 보여 준다.</li>
         </ol>
@@ -285,7 +286,7 @@
           오답노트·마이페이지·학습 기록 화면과 현황 API는 아직 없다. 부위별 수치는 <code>todayStudyStats.js</code> 목업이다.
         </div>
         <h3>확인하는 법</h3>
-        <p>로그인 후 주소창에 <code>/main</code>을 넣는다. 인사말에 세션 이름이 나오고, "학습하기"를 누르면 학습 설정(<code>/learning</code>)으로 가야 한다. 오늘의 학습 현황에는 뇌·흉부처럼 목업에 있는 부위만 나오고 복부·무릎은 없어야 한다. 로그인 전 <code>/main</code>은 로그인 화면으로 보낸다.</p>
+        <p>로그인 후 주소창에 <code>/main</code>을 넣는다. 인사말과 헤더에 세션 이름이 나오고, "학습하기"를 누르면 학습 설정(<code>/learning</code>)으로 가야 한다. 헤더에서 로그아웃하면 로그인 화면으로 간다. 오늘의 학습 현황에는 뇌·흉부처럼 목업에 있는 부위만 나오고 복부·무릎은 없어야 한다. 로그인 전 <code>/main</code>은 로그인 화면으로 보낸다.</p>
       </section>
 
       <section id="learning">
@@ -295,7 +296,7 @@
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>src/components/learning/LearningSetupPage.vue</code> — 페이지 조립과 선택 상태, 시작 이동.</li>
-          <li><code>LearningSidebar.vue</code>, <code>LearningHeader.vue</code> — 왼쪽 메뉴와 상단 제목·사용자.</li>
+          <li><code>LearningSidebar.vue</code>, <code>LearningHeader.vue</code> — 왼쪽 메뉴와 상단 제목·이름·로그아웃.</li>
           <li><code>LearningStepper.vue</code> — 부위·영상이 선택되면 해당 단계 숫자가 초록으로 켜진다.</li>
           <li><code>RegionSelect.vue</code> / <code>RegionOptionCard.vue</code> — 부위 선택.</li>
           <li><code>ModalitySelect.vue</code> / <code>ModalityOptionCard.vue</code> — 영상 종류 선택.</li>
@@ -312,6 +313,7 @@
           <li>부위를 바꾸면 이전 영상 종류가 맞지 않으면 선택을 지운다.</li>
           <li>부위와 영상 종류가 모두 있을 때만 "학습 시작"이 켜진다.</li>
           <li>"학습 시작"은 <code>/medical?region=...&amp;type=...</code>로 간다.</li>
+          <li>상단 이름·아바타를 누르면 로그아웃이 나온다. 누르면 세션과 채점 저장을 지우고 <code>/login</code>으로 간다.</li>
           <li>사이드바의 학습 기록·북마크·리포트·설정은 아직 화면이 없다.</li>
         </ol>
         <pre><code>부위 chest + 영상 x-ray
@@ -320,7 +322,7 @@
           사이드바의 학습 기록·북마크·리포트·설정 화면은 아직 없다.
         </div>
         <h3>확인하는 법</h3>
-        <p>로그인 후 <code>/learning</code>을 연다. 처음에는 선택이 없고 "학습 시작"이 꺼져 있어야 한다. 부위와 영상 종류를 고른 뒤 "학습 시작"을 누르면 풀이 화면으로 가야 한다. 메인 홈의 "학습하기"로도 이 화면이 열린다.</p>
+        <p>로그인 후 <code>/learning</code>을 연다. 처음에는 선택이 없고 "학습 시작"이 꺼져 있어야 한다. 부위와 영상 종류를 고른 뒤 "학습 시작"을 누르면 풀이 화면으로 가야 한다. 상단 이름에서 로그아웃하면 로그인 화면으로 간다. 메인 홈의 "학습하기"로도 이 화면이 열린다.</p>
       </section>
 
       <section id="problem">
@@ -330,7 +332,7 @@
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>CaseSolvingPage.vue</code> — 문제를 불러오고 제출한다. MRI 경로 배열 파싱과 슬라이스 로드도 여기서 한다.</li>
-          <li><code>MedHeader.vue</code> — 부위, 영상 종류, 사용자 메뉴.</li>
+          <li><code>MedHeader.vue</code> — MedLens 로고(<code>/main</code>), 부위·영상 종류·문제 풀이, 가이드, 이름·로그아웃.</li>
           <li><code>CaseInfoBar.vue</code> — 문제 번호와 요약.</li>
           <li><code>XrayViewer.vue</code> — 이미지와 ROI 레이어. 슬라이스가 많으면 하단 슬라이더와 휠로 장을 바꾼다.</li>
         </ul>
@@ -406,27 +408,30 @@
       <section id="review">
         <h2>채점 리뷰</h2>
         <h3>무엇을 하나</h3>
-        <p>방금 제출한 영상, 내가 그린 영역, 서버 오버레이, 정답 여부를 나란히 보여 준다. MRI면 몇 번째 슬라이스를 냈는지도 보여 준다. 저장이 없으면 연습용 목업을 보여 준다.</p>
+        <p>방금 제출한 영상, 내가 그린 영역, 서버 오버레이, 정답 여부를 나란히 보여 준다. 요약에는 출혈(ICH) 확률과 생식세포종양(germinoma) 확률을 함께 보여 준다. MRI면 몇 번째 슬라이스를 냈는지도 보여 준다. 저장이 없으면 연습용 목업을 보여 준다.</p>
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>CaseReviewPage.vue</code> — 저장값을 읽어 두 패널에 넘긴다.</li>
-          <li><code>reviewModel.js</code> — 저장 키, 목업, 오버레이·슬라이스 값 변환.</li>
+          <li><code>reviewModel.js</code> — 저장 키, 목업(출혈·germinoma 포함), 오버레이·슬라이스 값 변환.</li>
           <li><code>ReviewResultPanel.vue</code> — 영상과 ROI, MRI 슬라이스 배지.</li>
-          <li><code>ReviewSummaryPanel.vue</code> — 판정, IoU, 소견, 제출 슬라이스.</li>
+          <li><code>ReviewSummaryPanel.vue</code> — 판정, IoU, 출혈(ICH)·Germinoma 소견, 제출 슬라이스.</li>
           <li><code>ReviewHeader.vue</code> — 다음 문제, 학습 종료.</li>
         </ul>
         <h3>동작 순서</h3>
         <ol>
-          <li>처음 데이터는 목업이다. <code>usingMock</code>이 참이고 판정은 "부분정답"이다.</li>
+          <li>처음 데이터는 목업이다. <code>usingMock</code>이 참이고 판정은 "부분정답"이다. 목업에도 출혈·생식세포종양 예시가 있다.</li>
           <li><code>mounted</code>에서 <code>medlens.review</code>를 읽는다. <code>gradeResult</code>가 없으면 목업을 유지한다.</li>
           <li>있으면 목업 표시를 끄고 저장한 채점, 이미지 경로, 사용자 ROI, 오버레이, <code>sliceIndex</code>/<code>sliceTotal</code>을 쓴다.</li>
+          <li>요약의 "주요 영상 소견"은 <code>gradeResult.classification.findings</code>(출혈 ICH)와 <code>gradeResult.germinoma.findings</code>(생식세포종양)를 확률 막대로 보여 준다. <code>germinoma</code>가 <code>null</code>이면 Germinoma 줄은 생략한다.</li>
           <li>오버레이는 저장된 경로가 우선이고, 없으면 응답의 base64 PNG를 이미지 주소로 만든다.</li>
           <li>MRI이고 슬라이스 값이 있으면 결과 배지와 요약에 "슬라이스 N / M"을 보여 준다.</li>
           <li>"다음 문제"는 같은 <code>region</code>, <code>type</code>으로 <code>/medical</code>에 돌아간다.</li>
           <li>"학습 종료"는 <code>onDone</code>이 <code>/main</code>으로 보낸다. 세션은 유지된다.</li>
         </ol>
+        <pre><code>gradeResult.classification.findings  → 출혈 (ICH) 막대
+gradeResult.germinoma.findings       → Germinoma · 생식세포종양 막대</code></pre>
         <h3>확인하는 법</h3>
-        <p>로그인한 뒤 제출 없이 <code>/medical/review</code>를 열면 목업 표시가 보여야 한다. 세션이 없으면 로그인 화면으로 간다. 풀이에서 제출한 직후라면 방금 그린 영역과 서버 판정이 보여야 하고 목업 문구는 사라진다. "학습 종료"를 누르면 메인 홈(<code>/main</code>)으로 가야 한다.</p>
+        <p>로그인한 뒤 제출 없이 <code>/medical/review</code>를 열면 목업에 출혈·생식세포종양 예시가 보여야 한다. 세션이 없으면 로그인 화면으로 간다. 풀이에서 제출한 직후라면 방금 그린 영역과 서버 판정이 보여야 하고, Network/<code>medlens.review</code>의 <code>germinoma</code>가 있으면 요약에 Germinoma 줄이 나와야 한다. "학습 종료"를 누르면 메인 홈(<code>/main</code>)으로 가야 한다.</p>
       </section>
 
       <section id="todo">

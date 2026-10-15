@@ -5,13 +5,26 @@ export const MOCK_GRADE = {
   has_abnormality: true,
   recall: 0.68,
   iou: 0.42,
-  overlay_summary: '폐결절 (p=0.86, 중부-우측, ~1200px)',
+  overlay_summary: '지주막하출혈 (p=0.82, 중부-중앙, ~741px)',
   classification: {
-    top_label: 'pulmonary nodule',
-    top_label_ko: '폐 결절',
+    top_label: 'subarachnoid',
+    top_label_ko: '지주막하출혈',
+    confidence: 0.82,
+    task: 'hemorrhage',
     findings: [
-      { label: 'nodule', label_ko: '폐결절', score: 0.86 },
-      { label: 'solid nodule', label_ko: '고형결절', score: 0.72 }
+      { label: 'subarachnoid', label_ko: '지주막하출혈', score: 0.82 },
+      { label: 'any', label_ko: '두개내출혈', score: 0.81 },
+      { label: 'intraparenchymal', label_ko: '뇌실질내출혈', score: 0.7 },
+      { label: 'subdural', label_ko: '경막하출혈', score: 0.52 }
+    ]
+  },
+  germinoma: {
+    top_label: 'germinoma',
+    top_label_ko: '생식세포종양',
+    confidence: 0.36,
+    task: 'germinoma',
+    findings: [
+      { label: 'germinoma', label_ko: '생식세포종양', score: 0.36 }
     ]
   }
 }

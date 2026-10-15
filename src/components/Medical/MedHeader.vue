@@ -1,8 +1,8 @@
 <template>
   <header class="med-header">
     <div class="med-header__left">
-      <router-link class="logo" to="/">
-        <span class="logo-text"></span>
+      <router-link class="logo" to="/main">
+        <span class="logo-text">MedLens</span>
       </router-link>
 
       <span class="divider" aria-hidden="true"/>
