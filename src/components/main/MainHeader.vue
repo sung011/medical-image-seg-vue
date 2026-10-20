@@ -6,6 +6,9 @@
         <router-link class="main-header__link" to="/learning">학습</router-link>
         <a class="main-header__link" href="#" @click.prevent>오답노트</a>
         <a class="main-header__link" href="#" @click.prevent>마이페이지</a>
+        <button type="button" class="main-header__link main-header__inquiry" @click="onInquiry">
+          문의하기
+        </button>
       </nav>
       <div v-if="user" class="main-header__user" ref="userMenu">
         <span class="main-header__user-name">{{ user.user_name || user.user_id }}</span>
@@ -71,6 +74,10 @@ export default {
       sessionStorage.removeItem(REVIEW_STORAGE_KEY)
       this.user = null
       this.$router.push('/login')
+    },
+    onInquiry() {
+      this.menuOpen = false
+      this.$emit('open-inquiry')
     }
   }
 }
@@ -119,6 +126,13 @@ export default {
 .main-header__link:hover,
 .main-header__link.router-link-active {
   color: #1a2b4b;
+}
+
+.main-header__inquiry {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .main-header__user {

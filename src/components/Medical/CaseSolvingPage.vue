@@ -51,9 +51,10 @@ import RoiToolbar from './RoiToolbar.vue'
 import XrayViewer from './XrayViewer.vue'
 import TermDictionary from './TermDictionary.vue'
 import {getUserSession} from '../login/authSession'
+import { API_BASE } from '../../apiBase'
 
-const PROBLEM_API = 'http://127.0.0.1:8000/learning/problem'
-const ROI_GRADE_API = 'http://127.0.0.1:8000/learning/roi-grade'
+const PROBLEM_API = `${API_BASE}/learning/problem`
+const ROI_GRADE_API = `${API_BASE}/learning/roi-grade`
 const IMAGE_BASE = 'https://olleh7531.synology.me/mu_shop/public'
 const REVIEW_STORAGE_KEY = 'medlens.review'
 const SLICE_CACHE_MAX = 48

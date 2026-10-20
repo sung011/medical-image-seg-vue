@@ -17,8 +17,9 @@
 import LoginBrandPanel from './LoginBrandPanel.vue'
 import LoginForm from './LoginForm.vue'
 import { saveUserSession } from './authSession'
+import { API_BASE } from '../../apiBase'
 
-const LOGIN_API = 'http://127.0.0.1:8000/login'
+const LOGIN_API = `${API_BASE}/login`
 
 export default {
   name: 'LoginPage',

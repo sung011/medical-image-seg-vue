@@ -16,6 +16,7 @@
 src/
   main.js              앱 시작, router 등록
   App.vue              router-view만 렌더
+  apiBase.js           백엔드 주소 API_BASE
   router/index.js      경로와 로그인 이동
   components/
     login/             로그인, 세션
@@ -35,7 +36,7 @@ src/
 - 로그인 사용자: `sessionStorage` 키 `medlens_user`. 읽고 쓰기는 `src/components/login/authSession.js`만 사용한다.
 - 채점 결과: `sessionStorage` 키 `medlens.review`. 읽고 쓰기는 `src/components/Medical/review/reviewModel.js`만 사용한다.
 - 풀이 화면 쿼리: `region` (`brain` `chest` `abdomen` `knee`), `type` (예: `CT`).
-- API 주소는 그 요청을 하는 파일 상단 상수로만 둔다. 기본 백엔드는 `http://127.0.0.1:8000`.
+- 백엔드 주소는 `src/apiBase.js`의 `API_BASE`만 고친다. 기본값은 `http://127.0.0.1:8000`. 각 요청 파일은 경로만 이 값 뒤에 붙인다.
 
 ## 구현 습관
 

@@ -1,6 +1,6 @@
 <template>
   <div class="main-page">
-    <MainHeader/>
+    <MainHeader @open-inquiry="chatOpen = true"/>
     <div class="main-page__inner">
 
 
@@ -55,24 +55,31 @@
         </ul>
       </section>
     </div>
+    <EventPromoPopups/>
+    <InquiryChat v-if="chatOpen" @close="chatOpen = false"/>
   </div>
 </template>
 
 <script>
 import MainHeader from './MainHeader.vue'
+import EventPromoPopups from './EventPromoPopups.vue'
+import InquiryChat from './InquiryChat.vue'
 import {getUserSession} from '../login/authSession'
 import {getStudiedRegionStats} from './todayStudyStats'
 
 export default {
   name: 'IndexPage',
   components: {
-    MainHeader
+    MainHeader,
+    EventPromoPopups,
+    InquiryChat
   },
   data() {
     const user = getUserSession()
     return {
       user,
-      regionStats: getStudiedRegionStats()
+      regionStats: getStudiedRegionStats(),
+      chatOpen: false
     }
   },
   computed: {
@@ -93,7 +100,6 @@ export default {
 }
 
 .main-page__inner {
-  //max-width: 1040px;
   margin: 0 auto;
   padding: 8px 28px 48px;
   box-sizing: border-box;

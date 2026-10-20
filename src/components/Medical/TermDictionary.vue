@@ -39,7 +39,9 @@
 </template>
 
 <script>
-const GLOSSARY_API = 'http://127.0.0.1:8000/glossary'
+import { API_BASE } from '../../apiBase'
+
+const GLOSSARY_API = `${API_BASE}/glossary`
 
 function parsePgArray(value) {
   if (!value || typeof value !== 'string') return []
