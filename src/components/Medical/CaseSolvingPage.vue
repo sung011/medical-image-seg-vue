@@ -1,7 +1,6 @@
 <template>
+  <PageFrame fill>
   <div class="case-page">
-    <MedHeader/>
-
     <main class="content">
       <section class="viewer-col">
         <CaseInfoBar
@@ -42,16 +41,18 @@
       <TermDictionary class="dict-fill"/>
     </main>
   </div>
+  </PageFrame>
 </template>
 
 <script>
-import MedHeader from './MedHeader.vue'
+import PageFrame from '../main/PageFrame.vue'
 import CaseInfoBar from './CaseInfoBar.vue'
 import RoiToolbar from './RoiToolbar.vue'
 import XrayViewer from './XrayViewer.vue'
 import TermDictionary from './TermDictionary.vue'
 import {getUserSession} from '../login/authSession'
 import { API_BASE } from '../../apiBase'
+import { showMessage } from '../../notify'
 
 const PROBLEM_API = `${API_BASE}/learning/problem`
 const ROI_GRADE_API = `${API_BASE}/learning/roi-grade`
@@ -162,7 +163,7 @@ function errorDetail(payload, fallback) {
 export default {
   name: 'CaseSolvingPage',
   components: {
-    MedHeader,
+    PageFrame,
     CaseInfoBar,
     RoiToolbar,
     XrayViewer,
@@ -363,7 +364,7 @@ export default {
         await this.applySlice(index)
       } catch (e) {
         this.sliceIndex = this.shownSliceIndex
-        alert(e.message || '슬라이스를 불러오지 못했습니다.')
+        showMessage(e.message || '슬라이스를 불러오지 못했습니다.', 'error')
       }
     },
     async fetchProblem() {
@@ -509,11 +510,11 @@ export default {
     async onSubmit() {
       if (this.submitting) return
       if (!this.imageFile) {
-        alert('원본 이미지를 아직 불러오지 못했습니다.')
+        showMessage('원본 이미지를 아직 불러오지 못했습니다.', 'warning')
         return
       }
       if (!this.rois.length) {
-        alert('ROI를 하나 이상 지정해 주세요.')
+        showMessage('ROI를 하나 이상 지정해 주세요.', 'warning')
         return
       }
 
@@ -559,13 +560,13 @@ export default {
           query: {region, type, idx: this.caseId}
         })
       } catch (e) {
-        alert(e.message || '채점에 실패했습니다.')
+        showMessage(e.message || '채점에 실패했습니다.', 'error')
       } finally {
         this.submitting = false
       }
     },
     onGoList() {
-      alert('케이스 목록 화면은 아직 연결 전입니다.')
+      showMessage('케이스 목록 화면은 아직 연결 전입니다.')
     }
   }
 }
@@ -573,7 +574,8 @@ export default {
 
 <style>
 .case-page {
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: #f1f5f9;

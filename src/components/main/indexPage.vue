@@ -1,6 +1,5 @@
 <template>
-  <div class="main-page">
-    <MainHeader @open-inquiry="chatOpen = true"/>
+  <PageFrame>
     <div class="main-page__inner">
 
 
@@ -33,7 +32,9 @@
 
       <section class="status">
         <h2 class="status__title">오늘의 학습 현황</h2>
-        <p v-if="!regionStats.length" class="status__empty">오늘 학습한 부위가 아직 없어요.</p>
+        <p v-if="statsLoading" class="status__empty">불러오는 중</p>
+        <p v-else-if="statsError" class="status__empty">{{ statsError }}</p>
+        <p v-else-if="!regionStats.length" class="status__empty">오늘 학습한 부위가 아직 없어요.</p>
         <ul v-else class="status__regions">
           <li v-for="item in regionStats" :key="item.region" class="status__region">
             <h3 class="status__region-name">{{ item.label }}</h3>
@@ -56,30 +57,28 @@
       </section>
     </div>
     <EventPromoPopups/>
-    <InquiryChat v-if="chatOpen" @close="chatOpen = false"/>
-  </div>
+  </PageFrame>
 </template>
 
 <script>
-import MainHeader from './MainHeader.vue'
+import PageFrame from './PageFrame.vue'
 import EventPromoPopups from './EventPromoPopups.vue'
-import InquiryChat from './InquiryChat.vue'
 import {getUserSession} from '../login/authSession'
-import {getStudiedRegionStats} from './todayStudyStats'
+import {fetchTodayStudyStats} from './todayStudyStats'
 
 export default {
   name: 'IndexPage',
   components: {
-    MainHeader,
-    EventPromoPopups,
-    InquiryChat
+    PageFrame,
+    EventPromoPopups
   },
   data() {
     const user = getUserSession()
     return {
       user,
-      regionStats: getStudiedRegionStats(),
-      chatOpen: false
+      regionStats: [],
+      statsLoading: false,
+      statsError: ''
     }
   },
   computed: {
@@ -87,18 +86,30 @@ export default {
       if (!this.user) return '학생'
       return this.user.user_name || this.user.user_id || '학생'
     }
+  },
+  mounted() {
+    this.loadTodayStats()
+  },
+  methods: {
+    async loadTodayStats() {
+      const userIdx = this.user && Number(this.user.idx)
+      if (!Number.isFinite(userIdx) || userIdx < 1) return
+      this.statsLoading = true
+      this.statsError = ''
+      try {
+        this.regionStats = await fetchTodayStudyStats(userIdx)
+      } catch (e) {
+        this.regionStats = []
+        this.statsError = e.message || '오늘의 학습 현황을 불러오지 못했습니다.'
+      } finally {
+        this.statsLoading = false
+      }
+    }
   }
 }
 </script>
 
 <style scoped>
-.main-page {
-  min-height: 100%;
-  box-sizing: border-box;
-  background: #eef3f7;
-  color: #1a2b4b;
-}
-
 .main-page__inner {
   margin: 0 auto;
   padding: 8px 28px 48px;

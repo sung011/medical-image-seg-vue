@@ -1,36 +1,37 @@
 <template>
-  <div class="learning-page">
-    <LearningSidebar active-id="setup" @guide="onGuide"/>
-    <div class="learning-page__main">
-      <LearningHeader :display-name="displayName"/>
-      <div class="learning-page__panel">
-        <LearningStepper
-            :region-selected="Boolean(selectedRegion)"
-            :modality-selected="Boolean(selectedModality)"
-        />
-        <RegionSelect v-model="selectedRegion"/>
-        <ModalitySelect v-model="selectedModality" :region="selectedRegion"/>
-        <LearningStartButton :disabled="!canStart" @start="onStart"/>
+  <PageFrame fill>
+    <div class="learning-page">
+      <LearningSidebar active-id="setup" @guide="onGuide"/>
+      <div class="learning-page__main">
+        <div class="learning-page__panel">
+          <LearningStepper
+              :region-selected="Boolean(selectedRegion)"
+              :modality-selected="Boolean(selectedModality)"
+          />
+          <RegionSelect v-model="selectedRegion"/>
+          <ModalitySelect v-model="selectedModality" :region="selectedRegion"/>
+          <LearningStartButton :disabled="!canStart" @start="onStart"/>
+        </div>
       </div>
     </div>
-  </div>
+  </PageFrame>
 </template>
 
 <script>
-import {getUserSession} from '../login/authSession'
 import {canStartLearning, isModalityAllowed} from './learningOptions'
+import PageFrame from '../main/PageFrame.vue'
 import LearningSidebar from './LearningSidebar.vue'
-import LearningHeader from './LearningHeader.vue'
 import LearningStepper from './LearningStepper.vue'
 import RegionSelect from './RegionSelect.vue'
 import ModalitySelect from './ModalitySelect.vue'
 import LearningStartButton from './LearningStartButton.vue'
+import {showMessage} from '../../notify'
 
 export default {
   name: 'LearningSetupPage',
   components: {
+    PageFrame,
     LearningSidebar,
-    LearningHeader,
     LearningStepper,
     RegionSelect,
     ModalitySelect,
@@ -38,16 +39,11 @@ export default {
   },
   data() {
     return {
-      user: getUserSession(),
       selectedRegion: '',
       selectedModality: ''
     }
   },
   computed: {
-    displayName() {
-      if (!this.user) return '학생'
-      return this.user.user_name || this.user.user_id || '학생'
-    },
     canStart() {
       return canStartLearning(this.selectedRegion, this.selectedModality)
     }
@@ -61,7 +57,7 @@ export default {
   },
   methods: {
     onGuide() {
-      window.alert('사용 가이드 화면은 아직 연결 전입니다.')
+      showMessage('사용 가이드 화면은 아직 연결 전입니다.')
     },
     onStart() {
       if (!this.canStart) return
@@ -79,6 +75,7 @@ export default {
 
 <style scoped>
 .learning-page {
+  flex: 1;
   min-height: 100%;
   display: flex;
   background: #eef3f7;

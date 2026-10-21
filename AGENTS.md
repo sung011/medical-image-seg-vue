@@ -7,7 +7,8 @@
 
 - Vue 3, Options API, 단일 파일 컴포넌트. Composition API와 TypeScript로 바꾸지 않는다.
 - 라우터는 `src/router/index.js`의 vue-router 4만 사용한다.
-- HTTP는 `fetch`만 사용한다. axios, Pinia, UI 라이브러리를 추가하지 않는다.
+- HTTP는 `fetch`만 사용한다. axios, Pinia는 추가하지 않는다.
+- 알림은 SweetAlert2만 쓴다. 호출은 `src/notify.js`의 `showMessage`만 사용한다.
 - 화면 문구는 한국어로 둔다.
 
 ## 폴더
@@ -17,6 +18,7 @@ src/
   main.js              앱 시작, router 등록
   App.vue              router-view만 렌더
   apiBase.js           백엔드 주소 API_BASE
+  notify.js            SweetAlert2 알림 showMessage
   router/index.js      경로와 로그인 이동
   components/
     login/             로그인, 세션
@@ -25,6 +27,7 @@ src/
     learning/          학습 설정 (부위, 영상 종류)
     Medical/           문제 풀이 (영상, ROI, 용어)
     Medical/review/    채점 리뷰
+    analyze/           화면 공유 후 ROI 분석
 ```
     
 - 새 화면은 해당 기능 폴더에 `PascalCase.vue`로 둔다.

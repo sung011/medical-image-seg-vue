@@ -5,6 +5,7 @@ import CaseSolvingPage from '../components/Medical/CaseSolvingPage.vue'
 import CaseReviewPage from '../components/Medical/review/CaseReviewPage.vue'
 import indexPage from '../components/main/indexPage.vue'
 import LearningSetupPage from '../components/learning/LearningSetupPage.vue'
+import ScreenAnalyzePage from '../components/analyze/ScreenAnalyzePage.vue'
 import {getUserSession} from '../components/login/authSession'
 
 function requireSession(to, from, next) {
@@ -55,6 +56,11 @@ const router = createRouter({
         {
             path: '/learning',
             component: LearningSetupPage,
+            beforeEnter: requireSession
+        },
+        {
+            path: '/analyze',
+            component: ScreenAnalyzePage,
             beforeEnter: requireSession
         }
     ]
