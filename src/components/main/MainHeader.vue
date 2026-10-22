@@ -4,7 +4,7 @@
       <router-link class="main-header__brand" to="/main">MedLens</router-link>
       <nav class="main-header__nav" aria-label="메인 메뉴">
         <router-link class="main-header__link" to="/learning">학습</router-link>
-        <a class="main-header__link" href="#" @click.prevent>오답노트</a>
+        <router-link class="main-header__link" to="/note">오답노트</router-link>
         <a class="main-header__link" href="#" @click.prevent>마이페이지</a>
         <button type="button" class="main-header__link main-header__inquiry" @click="onInquiry">
           문의하기

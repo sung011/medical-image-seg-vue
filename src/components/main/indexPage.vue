@@ -20,14 +20,14 @@
           <h2 class="nav-card__title">학습 시작</h2>
           <p class="nav-card__desc">새로운 문제를 시작하거나 이어갈 수 있어요.</p>
         </router-link>
-        <a class="nav-card" href="#" @click.prevent>
+        <router-link class="nav-card" to="/note">
           <h2 class="nav-card__title">오답노트</h2>
           <p class="nav-card__desc">틀린 문제를 확인하고 실력을 향상시켜요.</p>
-        </a>
-        <a class="nav-card" href="#" @click.prevent>
+        </router-link>
+        <router-link class="nav-card" to="/history">
           <h2 class="nav-card__title">학습 기록</h2>
           <p class="nav-card__desc">학습 분석을 통해 성장 과정을 확인해보세요.</p>
-        </a>
+        </router-link>
       </section>
 
       <section class="status">

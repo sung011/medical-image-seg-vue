@@ -10,14 +10,14 @@
 
     <nav class="learning-sidebar__nav" aria-label="학습 메뉴">
       <component
-        :is="item.to ? 'router-link' : 'a'"
-        v-for="item in items"
-        :key="item.id"
-        class="learning-sidebar__link"
-        :class="{'is-active': item.id === activeId}"
-        :to="item.to || undefined"
-        :href="item.to ? undefined : '#'"
-        @click="onNavClick($event, item)"
+          :is="item.to ? 'router-link' : 'a'"
+          v-for="item in items"
+          :key="item.id"
+          class="learning-sidebar__link"
+          :class="{'is-active': item.id === activeId}"
+          :to="item.to || undefined"
+          :href="item.to ? undefined : '#'"
+          @click="onNavClick($event, item)"
       >
         <span class="learning-sidebar__icon" aria-hidden="true" v-html="iconSvg(item.id)"/>
         <span>{{ item.label }}</span>
@@ -39,6 +39,7 @@ import {SIDEBAR_ITEMS} from './learningOptions'
 
 const ICON_SVG = {
   setup: '<svg viewBox="0 0 20 20" width="16" height="16" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M10 6v4l2.5 1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  note: '<svg viewBox="0 0 20 20" width="16" height="16" fill="none"><rect x="4" y="3" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M7 8h6M7 11h6M7 14h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   history: '<svg viewBox="0 0 20 20" width="16" height="16" fill="none"><path d="M4 5h12M4 10h12M4 15h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   bookmark: '<svg viewBox="0 0 20 20" width="16" height="16" fill="none"><path d="M6 3.5h8v13l-4-2.5-4 2.5v-13z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
   report: '<svg viewBox="0 0 20 20" width="16" height="16" fill="none"><path d="M5 15V9M10 15V5M15 15v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
@@ -81,6 +82,7 @@ export default {
   background: #fff;
   border-right: 1px solid #e6edf3;
   box-sizing: border-box;
+  min-height: 90vh;
 }
 
 .learning-sidebar__brand {

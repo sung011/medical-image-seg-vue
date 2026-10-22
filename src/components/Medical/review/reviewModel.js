@@ -1,3 +1,5 @@
+import {API_BASE} from '../../../apiBase'
+
 export const STORAGE_KEY = 'medlens.review'
 
 export const MOCK_GRADE = {
@@ -81,6 +83,47 @@ export function createDefaultReview() {
     usingMock: true,
     type: '',
     sliceIndex: null,
+    sliceTotal: null
+  }
+}
+
+export async function fetchSavedReview(reviewIdx, userIdx) {
+  const params = new URLSearchParams({
+    idx: String(reviewIdx),
+    user_idx: String(userIdx)
+  })
+  const response = await fetch(`${API_BASE}/learning/review?${params}`)
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const detail = typeof data.detail === 'string' ? data.detail : '채점 기록을 불러오지 못했습니다.'
+    throw new Error(detail)
+  }
+  const findings = data.findings && typeof data.findings === 'object' ? data.findings : {}
+  const ratioOrNull = (value) => {
+    if (value == null || value === '') return null
+    const number = Number(value)
+    return Number.isFinite(number) ? number : null
+  }
+  const recall = ratioOrNull(data.recall)
+  const iou = ratioOrNull(data.iou)
+  const sliceIndex = ratioOrNull(data.slice_index)
+  return {
+    usingMock: false,
+    grade: {
+      result: data.solution_label || '오답',
+      disease: data.disease || '',
+      recall,
+      iou,
+      overlay_summary: data.overlay_summary || '',
+      classification: findings.classification || null,
+      germinoma: findings.germinoma || null
+    },
+    studyIdx: data.study_idx,
+    imageSrc: publicAssetUrl(data.image),
+    userRoi: null,
+    overlaySrc: '',
+    type: data.type || '',
+    sliceIndex: sliceIndex != null && sliceIndex >= 0 ? sliceIndex : null,
     sliceTotal: null
   }
 }

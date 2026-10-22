@@ -36,7 +36,8 @@ export const REGION_MODALITIES = {
 
 export const SIDEBAR_ITEMS = [
   {id: 'setup', label: '학습하기', to: '/learning', active: true},
-  {id: 'history', label: '학습 기록', to: null},
+  {id: 'note', label: '오답노트', to: '/note'},
+  {id: 'history', label: '학습 기록', to: '/history'},
   {id: 'bookmark', label: '북마크', to: null},
   {id: 'report', label: '리포트', to: null},
   {id: 'settings', label: '설정', to: null}

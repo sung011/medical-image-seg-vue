@@ -28,6 +28,8 @@ src/
     Medical/           문제 풀이 (영상, ROI, 용어)
     Medical/review/    채점 리뷰
     analyze/           화면 공유 후 ROI 분석
+    note/              오답노트 (오답·부분정답 다시 풀기)
+    history/           학습 기록 (진도, 정답률, 최근 제출)
 ```
     
 - 새 화면은 해당 기능 폴더에 `PascalCase.vue`로 둔다.

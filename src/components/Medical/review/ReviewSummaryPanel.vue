@@ -11,14 +11,14 @@
       <article class="stat-card">
         <span class="stat-icon orange"><i class="fa fa-pie-chart"></i></span>
         <p>포함률</p>
-        <strong>{{ coveragePercent }}%</strong>
-        <div class="bar"><span :style="{ width: coveragePercent + '%' }"></span></div>
+        <strong>{{ coverageText }}</strong>
+        <div class="bar"><span :style="{ width: (coveragePercent || 0) + '%' }"></span></div>
       </article>
       <article class="stat-card">
         <span class="stat-icon pink"><i class="fa fa-dot-circle-o"></i></span>
         <p>ROI 정확도</p>
         <strong>{{ accuracyLabel }}</strong>
-        <div class="bar"><span :style="{ width: accuracyPercent + '%' }"></span></div>
+        <div class="bar"><span :style="{ width: (accuracyPercent || 0) + '%' }"></span></div>
       </article>
     </div>
 
@@ -158,6 +158,12 @@ export default {
       const pct = this.scorePercent(this.germinoma.confidence)
       return `Germinoma · ${name} ${pct}%`
     },
+    topicParticle() {
+      const name = this.diseaseName || ''
+      const code = name.charCodeAt(name.length - 1)
+      const hasBatchim = code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 !== 0
+      return hasBatchim ? '으로' : '로'
+    },
     diseaseName() {
       const ich =
         (this.grade.classification && this.grade.classification.top_label_ko) ||
@@ -171,12 +177,18 @@ export default {
       if (this.germinoma) {
         return this.germinoma.top_label_ko || this.germinoma.top_label || '생식세포종양'
       }
-      return '폐 결절'
+      if (this.grade.disease) return this.grade.disease
+      if (this.usingMock) return '폐 결절'
+      return '병명 없음'
     },
     coveragePercent() {
       const value = Number(this.grade.recall)
-      if (!Number.isFinite(value)) return 68
+      if (!Number.isFinite(value)) return null
       return Math.round(value * 100)
+    },
+    coverageText() {
+      if (this.coveragePercent == null) return '—'
+      return `${this.coveragePercent}%`
     },
     accuracyLabel() {
       if (this.grade.result === '정답') return '일치'
@@ -185,7 +197,7 @@ export default {
     },
     accuracyPercent() {
       const value = Number(this.grade.iou)
-      if (!Number.isFinite(value)) return 55
+      if (!Number.isFinite(value)) return null
       return Math.round(Math.min(1, value) * 100)
     },
     explanationLines() {
@@ -196,7 +208,7 @@ export default {
         ]
       }
       const lines = [
-        `${this.diseaseName}으로 추정되는 이상 부위입니다. 위치와 범위를 정답 표시와 비교해 보세요.`
+        `${this.diseaseName}${this.topicParticle} 추정되는 이상 부위입니다. 위치와 범위를 정답 표시와 비교해 보세요.`
       ]
       if (this.grade.overlay_summary) lines.push(this.grade.overlay_summary)
       if (this.germinomaTitle) lines.push(this.germinomaTitle)

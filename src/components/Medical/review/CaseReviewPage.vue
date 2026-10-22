@@ -2,10 +2,13 @@
   <PageFrame fill>
     <div class="review-page">
       <div class="review-actions">
-        <button type="button" class="btn ghost" @click="onNextProblem">다음 문제 가져오기</button>
+        <button v-if="canRetry" type="button" class="btn ghost" @click="onRetrySubmit">다시 제출</button>
+        <button v-else type="button" class="btn ghost" @click="onNextProblem">다음 문제 가져오기</button>
         <button type="button" class="btn primary" @click="onDone">풀이완료</button>
       </div>
-      <main class="content">
+      <p v-if="loading" class="review-status">채점 이미지를 불러오는 중</p>
+      <p v-else-if="loadError" class="review-status review-status--error">{{ loadError }}</p>
+      <main v-else class="content">
       <ReviewResultPanel
         :image-src="imageSrc"
         :overlay-src="overlaySrc"
@@ -32,7 +35,8 @@
 import PageFrame from '../../main/PageFrame.vue'
 import ReviewResultPanel from './ReviewResultPanel.vue'
 import ReviewSummaryPanel from './ReviewSummaryPanel.vue'
-import { createDefaultReview, loadReviewFromStorage } from './reviewModel'
+import {getUserSession} from '../../login/authSession'
+import { createDefaultReview, fetchSavedReview, loadReviewFromStorage } from './reviewModel'
 
 export default {
   name: 'CaseReviewPage',
@@ -42,26 +46,93 @@ export default {
     ReviewSummaryPanel
   },
   data() {
-    return createDefaultReview()
+    return {
+      ...createDefaultReview(),
+      loading: false,
+      loadError: '',
+      studyIdx: null
+    }
+  },
+  computed: {
+    canRetry() {
+      return this.retryStudyIdx != null
+    },
+    retryStudyIdx() {
+      const fromReview = Number(this.studyIdx)
+      if (Number.isFinite(fromReview) && fromReview >= 1) return fromReview
+      const reviewIdx = Number(this.$route.query.review)
+      const fromQuery = Number(this.$route.query.idx)
+      if (!Number.isFinite(reviewIdx) || reviewIdx < 1) return null
+      if (!Number.isFinite(fromQuery) || fromQuery < 1) return null
+      return fromQuery
+    }
   },
   mounted() {
-    const saved = loadReviewFromStorage()
-    if (!saved) return
-    this.usingMock = saved.usingMock
-    this.grade = saved.grade
-    this.imageSrc = saved.imageSrc
-    this.userRoi = saved.userRoi
-    this.overlaySrc = saved.overlaySrc
-    this.type = saved.type || this.$route.query.type || ''
-    this.sliceIndex = saved.sliceIndex
-    this.sliceTotal = saved.sliceTotal
+    this.loadReview()
+  },
+  watch: {
+    '$route.query.review'() {
+      this.loadReview()
+    }
   },
   methods: {
+    applyReview(saved) {
+      this.usingMock = saved.usingMock
+      this.grade = saved.grade
+      this.imageSrc = saved.imageSrc
+      this.userRoi = saved.userRoi
+      this.overlaySrc = saved.overlaySrc
+      this.type = saved.type || this.$route.query.type || ''
+      this.sliceIndex = saved.sliceIndex
+      this.sliceTotal = saved.sliceTotal
+      const studyIdx = Number(saved.studyIdx)
+      this.studyIdx = Number.isFinite(studyIdx) && studyIdx >= 1 ? studyIdx : null
+    },
+    async loadReview() {
+      const reviewIdx = Number(this.$route.query.review)
+      if (!Number.isFinite(reviewIdx) || reviewIdx < 1) {
+        const saved = loadReviewFromStorage()
+        if (saved) this.applyReview(saved)
+        return
+      }
+      const user = getUserSession()
+      const userIdx = user && Number(user.idx)
+      this.loading = true
+      this.loadError = ''
+      this.usingMock = false
+      this.imageSrc = ''
+      this.overlaySrc = ''
+      this.userRoi = null
+      if (!Number.isFinite(userIdx) || userIdx < 1) {
+        this.loading = false
+        this.loadError = '로그인 정보가 없습니다.'
+        return
+      }
+      try {
+        this.applyReview(await fetchSavedReview(reviewIdx, userIdx))
+      } catch (e) {
+        this.loadError = e.message || '채점 기록을 불러오지 못했습니다.'
+      } finally {
+        this.loading = false
+      }
+    },
     reviewQuery() {
       return {
         region: this.$route.query.region || 'brain',
         type: this.$route.query.type || 'CT'
       }
+    },
+    onRetrySubmit() {
+      const studyIdx = this.retryStudyIdx
+      if (studyIdx == null) return
+      this.$router.push({
+        path: '/medical',
+        query: {
+          region: this.$route.query.region || 'brain',
+          type: this.$route.query.type || this.type || 'CT',
+          idx: String(studyIdx)
+        }
+      })
     },
     onNextProblem() {
       this.$router.push({ path: '/medical', query: this.reviewQuery() })
@@ -82,6 +153,13 @@ export default {
   background: #eef3f8;
   text-align: left;
   overflow: hidden;
+}
+.review-status {
+  margin: 24px 16px;
+  color: #64748b;
+}
+.review-status--error {
+  color: #e11d48;
 }
 .review-actions {
   display: flex;

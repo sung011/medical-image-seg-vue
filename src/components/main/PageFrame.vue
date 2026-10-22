@@ -50,6 +50,9 @@ export default {
 .page-frame__body {
   flex: 1;
   min-height: 0;
+}
+
+.page-frame--fill .page-frame__body {
   display: flex;
   flex-direction: column;
 }

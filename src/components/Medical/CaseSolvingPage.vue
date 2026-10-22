@@ -388,17 +388,22 @@ export default {
           st_part: stPart,
           st_modal: stModal
         })
+        const studyIdx = Number(this.$route.query.idx)
+        if (Number.isFinite(studyIdx) && studyIdx >= 1) {
+          params.set('idx', String(studyIdx))
+        }
         if (user?.idx != null) {
           params.set('user_idx', String(user.idx))
         }
         const res = await fetch(`${PROBLEM_API}?${params}`)
+        const data = await res.json().catch(() => ({}))
         if (!res.ok) {
           if (res.status === 404) {
-            throw new Error('풀 수 있는 새 문제가 없습니다.')
+            const detail = typeof data.detail === 'string' ? data.detail : '풀 수 있는 새 문제가 없습니다.'
+            throw new Error(detail)
           }
           throw new Error(`API 오류 (${res.status})`)
         }
-        const data = await res.json()
         if (!data.ok || !data.problem) {
           throw new Error('문제를 불러오지 못했습니다.')
         }
