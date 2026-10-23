@@ -1,4 +1,5 @@
 import {API_BASE} from '../../apiBase'
+import {buildImageUrl} from '../../imageBase'
 
 const HISTORY_API = `${API_BASE}/learning/history`
 
@@ -11,9 +12,7 @@ export const HISTORY_RANGES = [
 ]
 
 export function historyImageUrl(path) {
-    if (!path) return ''
-    if (/^https?:\/\//i.test(path)) return path
-    return path.startsWith('/') ? path : `/${path}`
+    return buildImageUrl(path)
 }
 
 export function parseCreated(value) {

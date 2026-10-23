@@ -10,10 +10,10 @@ module.exports = defineConfig({
         },
         proxy: {
             '/stylesheets': {
-                target: 'https://olleh7531.synology.me',
+                target: 'https://kr.object.ncloudstorage.com',
                 changeOrigin: true,
                 pathRewrite: {
-                    '^/stylesheets': '/mu_shop/public/stylesheets'
+                    '^/stylesheets': '/biz02gj/stylesheets'
                 }
             }
         }

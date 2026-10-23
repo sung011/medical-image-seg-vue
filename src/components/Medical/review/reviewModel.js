@@ -1,4 +1,5 @@
 import {API_BASE} from '../../../apiBase'
+import {buildImageUrl} from '../../../imageBase'
 
 export const STORAGE_KEY = 'medlens.review'
 
@@ -40,9 +41,7 @@ export const MOCK_USER_ROI = {
 }
 
 export function publicAssetUrl(path) {
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path) || String(path).startsWith('data:')) return path
-  return path.startsWith('/') ? path : `/${path}`
+  return buildImageUrl(path)
 }
 
 export function overlaySrcFromBase64(b64) {

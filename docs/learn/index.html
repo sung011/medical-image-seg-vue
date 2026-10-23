@@ -180,13 +180,14 @@
             <tr><td><code>src/components/note/</code></td><td>오답·부분정답 카드를 보고 다시 푸는 화면</td></tr>
             <tr><td><code>src/components/history/</code></td><td>진도·정답률과 최근 제출을 보는 학습 기록</td></tr>
             <tr><td><code>src/apiBase.js</code></td><td>백엔드 주소 <code>API_BASE</code>. 요청 파일은 경로만 뒤에 붙인다</td></tr>
+            <tr><td><code>src/imageBase.js</code></td><td>영상 파일 주소 <code>IMAGE_BASE</code>. 상대 경로는 이 버킷 뒤에 붙인다</td></tr>
             <tr><td><code>src/notify.js</code></td><td>SweetAlert2 알림 <code>showMessage</code></td></tr>
           </tbody>
         </table>
         <h3>동작 순서</h3>
         <p>페이지 컴포넌트가 같은 폴더의 조각을 불러 조립한다. 예를 들어 로그인 페이지는 브랜드 영역과 입력 폼을 나란히 둔다. 세션을 읽고 쓰는 함수는 <code>authSession.js</code> 한곳에만 둔다. 채점 저장은 <code>reviewModel.js</code>만 맡는다.</p>
         <h3>확인하는 법</h3>
-        <p>화면을 고칠 때 그 기능 폴더 밖 파일을 열어 보면 연결이 과한 것이다. 스타일은 각 <code>.vue</code>의 <code>scoped</code> CSS에 있다. 백엔드 호스트만 <code>src/apiBase.js</code>를 같이 쓴다.</p>
+        <p>화면을 고칠 때 그 기능 폴더 밖 파일을 열어 보면 연결이 과한 것이다. 스타일은 각 <code>.vue</code>의 <code>scoped</code> CSS에 있다. 백엔드 호스트만 <code>src/apiBase.js</code>를, 영상 파일 호스트만 <code>src/imageBase.js</code>를 같이 쓴다.</p>
       </section>
 
       <section id="api">
@@ -199,7 +200,7 @@
         <ol>
           <li><code>API_BASE</code> 기본값은 <code>http://127.0.0.1:8000</code>이다.</li>
           <li>로그인은 <code>${API_BASE}/login</code>, 팝업은 <code>/popups</code>, 문의는 <code>/qa</code>, 문제는 <code>/learning/problem</code>, 오늘 현황은 <code>/learning/today</code>, 오답노트는 <code>/learning/notes</code>, 학습 기록은 <code>/learning/history</code>, 제출 이미지는 <code>/learning/review</code>, 채점은 <code>/learning/roi-grade</code>, 용어는 <code>/glossary</code>, 화면 분석은 <code>/api/v1/analyze/screen-roi</code>다.</li>
-          <li>영상 파일 주소(<code>synology.me</code>)는 이 값이 아니다. <code>CaseSolvingPage.vue</code>의 <code>IMAGE_BASE</code>에 따로 있다.</li>
+          <li>영상 파일 주소는 이 값이 아니다. <code>src/imageBase.js</code>의 <code>IMAGE_BASE</code>이고, 값은 <code>https://kr.object.ncloudstorage.com/biz02gj</code>다.</li>
         </ol>
         <pre><code>export const API_BASE = 'http://127.0.0.1:8000'
 const LOGIN_API = `${API_BASE}/login`</code></pre>
@@ -412,7 +413,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
         <ol>
           <li>주소 <code>/note</code>는 세션이 없으면 <code>/login</code>으로 보낸다. 홈 카드와 헤더 "오답노트"도 이 주소로 온다.</li>
           <li>세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/notes?user_idx=</code>를 호출한다.</li>
-          <li>응답 <code>items</code>는 문제마다 가장 최근 제출만 본다. 그 결과가 오답(<code>W</code>)이나 부분정답(<code>H</code>)일 때만 카드가 된다. 최근에 정답이면 그 문제는 빠진다. 병명, 부위, 영상 종류, 날짜, 제출 이미지를 카드에 그린다.</li>
+          <li>응답 <code>items</code>는 문제마다 가장 최근 제출만 본다. 그 결과가 오답(<code>W</code>)이나 부분정답(<code>H</code>)일 때만 카드가 된다. 최근에 정답이면 그 문제는 빠진다. 병명, 부위, 영상 종류, 날짜, 제출 이미지를 카드에 그린다. <code>image</code>가 상대 경로면 <code>IMAGE_BASE</code> 뒤에 붙여 <code>https://kr.object.ncloudstorage.com/biz02gj/...</code>로 보여 준다.</li>
           <li>"전체", "오답", "부분정답"으로 거르고, "최신순"과 "오래된순"으로 바꾼다. 한 화면에 8장이고, 항목이 있으면 아래 번호로 넘긴다. 한 페이지여도 번호는 보인다.</li>
           <li>"다시 풀기"는 그 카드의 <code>region</code>, <code>type</code>, <code>idx</code>로 <code>/medical</code>에 간다. 풀이 화면은 그 <code>idx</code> 영상을 불러온다.</li>
           <li>항목이 없으면 "틀린 문제가 아직 없어요."를 보여 준다. API가 꺼지면 그 문장만 남고 메뉴는 그대로다.</li>
@@ -440,7 +441,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           <li>기간은 전체, 최근 7일, 최근 30일이다. 고르면 현황과 표가 그 날짜의 제출만 쓴다.</li>
           <li>진도는 기간 안 서로 다른 문제 수 / <code>total_studies</code>다. 정답률은 그 문제들의 가장 최근 결과가 정답(<code>C</code>)인 비율이다.</li>
           <li>ROI 정확도는 좌표 IoU 평균이 아니다. 서버는 IoU를 저장하지 않아서, 기간 안 제출 중 정답(<code>C</code>) 비율을 보여 준다.</li>
-          <li>표는 학습 일시, 케이스, 모드(문제 풀이), 소견, 결과다. 처음 4건만 보이고 "더보기"는 4건씩 연다. "전체 학습 기록 보기"는 남은 행을 한 번에 연다.</li>
+          <li>표는 학습 일시, 케이스, 모드(문제 풀이), 소견, 결과다. 케이스 칸의 작은 그림은 <code>image</code>가 상대 경로면 <code>IMAGE_BASE</code> 뒤에 붙인다. 처음 4건만 보이고 "더보기"는 4건씩 연다. "전체 학습 기록 보기"는 남은 행을 한 번에 연다.</li>
           <li>케이스 행을 누르면 <code>region</code>, <code>type</code>, <code>idx</code>, <code>review</code>로 <code>/medical/review</code>에 간다. <code>review</code>는 그 줄의 제출 번호다. 리뷰 화면이 이 번호로 저장해 둔 채점 이미지를 불러온다.</li>
           <li>기간 안 제출이 없으면 "이 기간에 학습 기록이 없어요."를 보여 준다. API가 꺼지면 그 문장만 남고 메뉴는 그대로다.</li>
         </ol>
@@ -495,11 +496,11 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           <li><code>GET ${API_BASE}/learning/problem?st_part=...&amp;st_modal=...</code> 를 호출한다. 세션의 <code>idx</code>가 있으면 <code>user_idx</code>도 붙인다. 주소의 <code>idx</code>는 <code>idx</code>로 붙여 그 study 영상을 받는다. 호스트는 <code>src/apiBase.js</code>다.</li>
           <li><code>type</code>이 <code>MRI</code>이면 <code>problem.st_image</code>를 경로 배열(또는 JSON·PostgreSQL 배열 문자열)로 풀고, 그 외 종류는 첫 경로 한 장만 쓴다.</li>
           <li>지금 슬라이스 경로의 이미지 바이트를 내려받아 파일 객체로 화면에 그린다. 받은 장은 캐시에 두고, 앞뒤 몇 장은 미리 받는다. 슬라이스를 바꾸면 ROI는 지운다.</li>
-          <li>이미지는 먼저 <code>/stylesheets/...</code>로 요청한다. 개발 서버가 이 경로를 <code>https://olleh7531.synology.me/mu_shop/public</code>로 넘긴다. 실패하면 같은 Synology 주소를 직접 한 번 더 호출한다.</li>
+          <li>개발 서버에서는 바이트를 <code>/stylesheets/...</code>로 받는다. <code>vue.config.js</code>가 이 경로를 <code>https://kr.object.ncloudstorage.com/biz02gj/stylesheets/...</code>로 넘긴다. 요청 주소가 <code>localhost</code>라서 버킷의 CORS 헤더가 없어도 된다. 이 경로가 실패할 때만 버킷 주소를 직접 호출한다.</li>
           <li>실패하면 "문제 불러오는 중" 대신 오류 문장을 보여 준다. 문제가 없으면 "풀 수 있는 새 문제가 없습니다."다.</li>
         </ol>
         <h3>확인하는 법</h3>
-        <p>로그인한 뒤 <code>/medical?region=chest&amp;type=CT</code>는 한 장만 보이고 슬라이더가 없어야 한다. <code>/medical?region=brain&amp;type=CT</code>도 같다. <code>idx</code>를 붙이면 그 번호의 영상이 나와야 하고, 케이스 번호가 그 <code>idx</code>와 같아야 한다. 영상은 화면 안 뷰어에 보이고, 오른쪽 용어 목록이 길면 그 칸에서만 스크롤한다. <code>/medical?region=brain&amp;type=MRI</code>에서 Network의 <code>/learning/problem</code> 응답 <code>st_image</code>가 <code>[</code>로 시작하는 배열(또는 JSON 배열 문자열)일 때만 하단에 슬라이더가 나온다. 경로 문자열 한 개면 슬라이더 없이 한 장만 보인다. 한 번 지나친 장은 다시 빠르게 나와야 한다. 상단 "목록"은 SweetAlert2로 "케이스 목록 화면은 아직 연결 전입니다."를 띄운다.</p>
+        <p>로그인한 뒤 개발자 도구 Network에서 영상 요청이 <code>http://localhost:8080/stylesheets/...</code>여야 하고, <code>kr.object.ncloudstorage.com</code>으로 가는 빨간 CORS 오류는 없어야 한다. <code>/medical?region=chest&amp;type=CT</code>는 한 장만 보이고 슬라이더가 없어야 한다. <code>/medical?region=brain&amp;type=CT</code>도 같다. <code>idx</code>를 붙이면 그 번호의 영상이 나와야 하고, 케이스 번호가 그 <code>idx</code>와 같아야 한다. 영상은 화면 안 뷰어에 보이고, 오른쪽 용어 목록이 길면 그 칸에서만 스크롤한다. <code>/medical?region=brain&amp;type=MRI</code>에서 Network의 <code>/learning/problem</code> 응답 <code>st_image</code>가 <code>[</code>로 시작하는 배열(또는 JSON 배열 문자열)일 때만 하단에 슬라이더가 나온다. 경로 문자열 한 개면 슬라이더 없이 한 장만 보인다. 한 번 지나친 장은 다시 빠르게 나와야 한다. 상단 "목록"은 SweetAlert2로 "케이스 목록 화면은 아직 연결 전입니다."를 띄운다.</p>
       </section>
 
       <section id="guide">
@@ -572,7 +573,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
         <h3>동작 순서</h3>
         <ol>
           <li>제출 <code>POST /learning/roi-grade</code>는 채점 이미지와 함께 포함률, IoU, 위치 요약, 출혈·germinoma 소견, MRI 슬라이스 번호를 <code>review_node</code>에 넣는다.</li>
-          <li>주소에 <code>review</code>가 있으면 세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/review?idx=&amp;user_idx=</code>를 호출한다. <code>idx</code>는 제출 번호다. 응답 <code>image</code>가 채점 이미지이고, <code>recall</code>·<code>iou</code>·<code>overlay_summary</code>·<code>findings</code>·<code>slice_index</code>로 결과 요약을 그린다. 예전 제출은 이 값이 비어 포함률이 <code>—</code>다.</li>
+          <li>주소에 <code>review</code>가 있으면 세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/review?idx=&amp;user_idx=</code>를 호출한다. <code>idx</code>는 제출 번호다. 응답 <code>image</code>가 채점 이미지이고, 상대 경로면 <code>IMAGE_BASE</code> 뒤에 붙인다. <code>recall</code>·<code>iou</code>·<code>overlay_summary</code>·<code>findings</code>·<code>slice_index</code>로 결과 요약을 그린다. 예전 제출은 이 값이 비어 포함률이 <code>—</code>다. 앱에 포함된 목업 그림(<code>/medical/</code>)은 버킷에 붙이지 않는다.</li>
           <li><code>review</code>가 없으면 처음 데이터는 목업이다. <code>usingMock</code>이 참이고 판정은 "부분정답"이다. 목업에도 출혈·생식세포종양 예시가 있다.</li>
           <li><code>mounted</code>에서 <code>review</code>가 없을 때만 <code>medlens.review</code>를 읽는다. <code>gradeResult</code>가 없으면 목업을 유지한다.</li>
           <li>있으면 목업 표시를 끄고 저장한 채점, 이미지 경로, 사용자 ROI, 오버레이, <code>sliceIndex</code>/<code>sliceTotal</code>을 쓴다.</li>

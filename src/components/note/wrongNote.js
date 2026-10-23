@@ -1,4 +1,5 @@
 import {API_BASE} from '../../apiBase'
+import {buildImageUrl} from '../../imageBase'
 
 const NOTES_API = `${API_BASE}/learning/notes`
 
@@ -16,9 +17,7 @@ export const NOTE_SORTS = [
 ]
 
 export function noteImageUrl(path) {
-    if (!path) return ''
-    if (/^https?:\/\//i.test(path)) return path
-    return path.startsWith('/') ? path : `/${path}`
+    return buildImageUrl(path)
 }
 
 export function formatNoteDate(value) {

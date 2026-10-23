@@ -52,11 +52,11 @@ import XrayViewer from './XrayViewer.vue'
 import TermDictionary from './TermDictionary.vue'
 import {getUserSession} from '../login/authSession'
 import { API_BASE } from '../../apiBase'
+import { buildImageUrl } from '../../imageBase'
 import { showMessage } from '../../notify'
 
 const PROBLEM_API = `${API_BASE}/learning/problem`
 const ROI_GRADE_API = `${API_BASE}/learning/roi-grade`
-const IMAGE_BASE = 'https://olleh7531.synology.me/mu_shop/public'
 const REVIEW_STORAGE_KEY = 'medlens.review'
 const SLICE_CACHE_MAX = 48
 const PREFETCH_RADIUS = 4
@@ -67,11 +67,15 @@ function imagePath(path) {
   return path.startsWith('/') ? path : `/${path}`
 }
 
-function buildImageUrl(path) {
-  const rel = imagePath(path)
-  if (!rel) return ''
-  if (/^https?:\/\//i.test(rel)) return rel
-  return `${IMAGE_BASE}${rel}`
+/** 개발 서버 프록시로 받는 같은 출처 경로. 브라우저는 Object Storage를 직접 호출하지 않는다. */
+function proxyImageUrl(path) {
+  const value = imagePath(path)
+  if (!value) return ''
+  if (value.startsWith('/')) return value
+  const marker = '/biz02gj/'
+  const at = value.indexOf(marker)
+  if (at < 0) return ''
+  return value.slice(at + marker.length - 1)
 }
 
 function filenameFromPath(path) {
@@ -260,12 +264,16 @@ export default {
       }
     },
     async fetchOriginalImage(path) {
-      const relative = imagePath(path)
-      const urls = [relative, buildImageUrl(path)].filter(
+      const viaDevServer = proxyImageUrl(path)
+      const direct = buildImageUrl(path)
+      const urls = process.env.NODE_ENV === 'development'
+          ? [viaDevServer, direct]
+          : [direct, viaDevServer]
+      const uniqueUrls = urls.filter(
           (url, index, list) => url && list.indexOf(url) === index
       )
       let lastError = null
-      for (const url of urls) {
+      for (const url of uniqueUrls) {
         try {
           const res = await fetch(url)
           if (!res.ok) {
