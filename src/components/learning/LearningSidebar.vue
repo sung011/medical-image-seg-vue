@@ -1,9 +1,9 @@
 <template>
   <aside class="learning-sidebar">
     <router-link class="learning-sidebar__brand" to="/main">
-      <span class="learning-sidebar__brand-mark">M</span>
+      <span class="learning-sidebar__brand-mark">메</span>
       <span class="learning-sidebar__brand-text">
-        <strong>MedLens</strong>
+        <strong>메디스캔노트</strong>
         <em>LEARNING</em>
       </span>
     </router-link>

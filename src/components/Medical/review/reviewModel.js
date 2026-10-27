@@ -70,6 +70,7 @@ export function formatResult(result) {
 export function resultClass(result) {
   if (result === '정답') return 'ok'
   if (result === '부분정답') return 'partial'
+  if (result === '판독') return 'read'
   return 'wrong'
 }
 
@@ -125,6 +126,39 @@ export async function fetchSavedReview(reviewIdx, userIdx) {
     sliceIndex: sliceIndex != null && sliceIndex >= 0 ? sliceIndex : null,
     sliceTotal: null
   }
+}
+
+const PART_REGION = {
+  '1': 'brain',
+  '2': 'chest',
+  '3': 'abdomen',
+  '4': 'knee'
+}
+
+const MODAL_TYPE = {
+  '1': 'x-ray',
+  '2': 'CT',
+  '3': 'MRI'
+}
+
+export function mapRetryProblem(problem) {
+  if (!problem || problem.idx == null) return null
+  return {
+    idx: problem.idx,
+    region: PART_REGION[String(problem.st_part)] || '',
+    type: MODAL_TYPE[String(problem.st_modal)] || ''
+  }
+}
+
+export async function fetchLearnerReview(reviewIdx, userIdx) {
+  const params = new URLSearchParams({ user_idx: String(userIdx) })
+  const response = await fetch(`${API_BASE}/learning/reviews/${reviewIdx}?${params}`)
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const detail = typeof data.detail === 'string' ? data.detail : '풀이 상세를 불러오지 못했습니다.'
+    throw new Error(detail)
+  }
+  return data.review || null
 }
 
 export function loadReviewFromStorage() {

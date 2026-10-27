@@ -37,19 +37,19 @@
       :open="open.findings"
       @toggle="toggle('findings')"
     >
-      <template v-if="!usingMock && (ichFindings.length || germinomaFindings.length)">
-        <p v-if="ichFindings.length" class="findings-group">출혈 (ICH)</p>
-        <ul v-if="ichFindings.length" class="prob-list">
-          <li v-for="item in ichFindings" :key="'ich-' + (item.label || item.label_ko)">
+      <template v-if="!usingMock && (primaryFindings.length || showGerminoma)">
+        <p v-if="primaryFindings.length" class="findings-group">{{ findingsTitle }}</p>
+        <ul v-if="primaryFindings.length" class="prob-list">
+          <li v-for="item in primaryFindings" :key="'finding-' + (item.label || item.label_ko)">
             <div class="prob-row">
               <span>{{ item.label_ko || item.label }}</span>
-              <strong>{{ scorePercent(item.score) }}%</strong>
+              <strong>{{ findingScoreText(item) }}</strong>
             </div>
-            <div class="bar"><span :style="{ width: scorePercent(item.score) + '%' }"></span></div>
+            <div v-if="item.status !== 'not_evaluated'" class="bar"><span :style="{ width: scorePercent(item.score) + '%' }"></span></div>
           </li>
         </ul>
-        <p v-if="germinomaFindings.length" class="findings-group">Germinoma</p>
-        <ul v-if="germinomaFindings.length" class="prob-list">
+        <p v-if="showGerminoma" class="findings-group">Germinoma</p>
+        <ul v-if="showGerminoma" class="prob-list">
           <li v-for="item in germinomaFindings" :key="'g-' + (item.label || item.label_ko)">
             <div class="prob-row">
               <span>{{ item.label_ko || item.label }}</span>
@@ -140,17 +140,34 @@ export default {
       }
       return String(current)
     },
+    readingTask() {
+      return (this.grade.classification && this.grade.classification.task) || ''
+    },
+    findingsTitle() {
+      if (this.readingTask === 'thorax') return '흉부 소견'
+      if (this.readingTask === 'brain-mri') return '뇌 MRI'
+      if (this.readingTask === 'knee' || this.readingTask === 'knee-mri') return '무릎 MRI'
+      return '출혈 (ICH)'
+    },
+    primaryFindings() {
+      return (this.grade.classification && this.grade.classification.findings) || []
+    },
     germinoma() {
       return this.grade.germinoma || null
     },
     ichFindings() {
-      const findings =
-        (this.grade.classification && this.grade.classification.findings) || []
-      return findings
+      if (this.readingTask === 'thorax' || this.readingTask === 'brain-mri' || this.readingTask === 'knee' || this.readingTask === 'knee-mri') {
+        return []
+      }
+      return this.primaryFindings
     },
     germinomaFindings() {
       if (!this.germinoma) return []
       return this.germinoma.findings || []
+    },
+    showGerminoma() {
+      if (this.readingTask && this.readingTask !== 'hemorrhage') return false
+      return this.germinomaFindings.length > 0
     },
     germinomaTitle() {
       if (!this.germinoma) return ''
@@ -165,6 +182,14 @@ export default {
       return hasBatchim ? '으로' : '로'
     },
     diseaseName() {
+      if (this.readingTask === 'thorax' || this.readingTask === 'brain-mri' || this.readingTask === 'knee' || this.readingTask === 'knee-mri') {
+        const top =
+          (this.grade.classification && this.grade.classification.top_label_ko) ||
+          this.grade.disease ||
+          ''
+        if (top) return top
+        if (this.readingTask === 'knee' || this.readingTask === 'knee-mri') return 'ACL'
+      }
       const ich =
         (this.grade.classification && this.grade.classification.top_label_ko) ||
         ''
@@ -201,6 +226,18 @@ export default {
       return Math.round(Math.min(1, value) * 100)
     },
     explanationLines() {
+      const note = this.grade.learning_note
+      if (!this.usingMock && note && (note.summary || note.case_summary || (note.appearance || []).length)) {
+        const lines = []
+        if (note.name) lines.push(note.name)
+        if (note.summary) lines.push(note.summary)
+        if (note.case_summary) lines.push(note.case_summary)
+        ;(note.appearance || []).forEach((line) => {
+          if (line) lines.push(line)
+        })
+        if (note.pitfall) lines.push(note.pitfall)
+        return lines
+      }
       if (this.usingMock) {
         return [
           '출혈(ICH)과 생식세포종양(germinoma) 분류 결과를 함께 확인할 수 있습니다.',
@@ -247,7 +284,10 @@ export default {
         ]
       }
       const chips = []
-      this.ichFindings.slice(0, 4).forEach((item) => {
+      const named = (this.readingTask === 'thorax' || this.readingTask === 'brain-mri' || this.readingTask === 'knee-mri')
+        ? this.primaryFindings
+        : this.ichFindings
+      named.slice(0, 4).forEach((item) => {
         if (item.label_ko && item.label) chips.push(`${item.label_ko}(${item.label})`)
         else chips.push(item.label_ko || item.label)
       })
@@ -286,6 +326,14 @@ export default {
       const value = Number(score)
       if (!Number.isFinite(value)) return 0
       return Math.round(Math.min(1, Math.max(0, value)) * 100)
+    },
+    findingScoreText(item) {
+      if (item.status === 'not_evaluated') return item.reason || '평가하지 않음'
+      if (item.verdict) {
+        const prob = Number(item.score)
+        return Number.isFinite(prob) ? `${item.verdict} (${prob.toFixed(3)})` : item.verdict
+      }
+      return `${this.scorePercent(item.score)}%`
     }
   }
 }

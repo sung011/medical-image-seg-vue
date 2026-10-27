@@ -2,7 +2,7 @@
   <div class="reg-box">
      
         <span class="re_tite">회원가입</span>
-        <span class="sub_tite">1/2 계장 정보를 입력해 주세요</span>
+        <span class="sub_tite">1/2 계정 정보를 입력해 주세요</span>
         <div class="reg-button">
             <ul>
                 <li :class="{ active: isFirstStep }">1 계정 정보</li>
@@ -38,7 +38,7 @@
             <div v-show="!isFirstStep" class="reg-02">
                 <div class="text-r">
                     <label for="userNickname">이름 (닉네임) 최대 5자</label>  
-                    <input v-model="userNickname" type="text" id="userNickname" name="userNickname" placeholder="이름 (닉네임)을 입력해 주세요."/>
+                    <input v-model="userNickname" type="text" id="userNickname" name="userNickname" maxlength="5" placeholder="이름 (닉네임)을 입력해 주세요."/>
                 </div> 
                 <div class="text-r">
                     <label for="userBirth">생년월일</label>  
@@ -58,7 +58,7 @@
                         <button  @click="isFirstStep = true">이전</button>
                     </div>
                     <div class="w70"> 
-                        <button type="button" @click="nextStep">가입 완료</button>
+                        <button type="button" @click="finish">가입 완료</button>
                     </div>
                 </div>
             </div>
@@ -68,6 +68,19 @@
 </template>
 
 <script>
+import { API_BASE } from '../../apiBase'
+import { showMessage } from '../../notify'
+
+function signupError(payload, fallback) {
+  const detail = payload && payload.detail
+  if (detail && typeof detail.message === 'string' && detail.message) return detail.message
+  if (typeof detail === 'string' && detail) return detail
+  if (Array.isArray(detail) && detail.length) {
+    return detail.map((item) => item.msg || '').filter(Boolean).join('\n') || fallback
+  }
+  return fallback
+}
+
 export default {
     data () {
         return {
@@ -83,18 +96,44 @@ export default {
     },
     methods: {
         nextStep () {
-            /*if (!this.email || !this.password || !this.repassword) {
-                window.alert('필수 항목을 모두 입력해 주세요.')
+            if (!this.email.trim() || !this.password || !this.repassword) {
+                showMessage('필수 항목을 모두 입력해 주세요.', 'warning')
                 return
             }
-
             if (this.password !== this.repassword) {
-                window.alert('비밀번호가 일치하지 않습니다.')
+                showMessage('비밀번호가 일치하지 않습니다.', 'warning')
                 return
             }
-
-            window.alert('다음 단계로 이동합니다.')*/
             this.isFirstStep = false
+        },
+        async finish () {
+            if (!this.userNickname.trim() || !this.userBirth.trim() || !this.userSchool.trim() || !this.userMajor.trim()) {
+                showMessage('이름, 생년월일, 학교, 전공을 입력해 주세요.', 'warning')
+                return
+            }
+            try {
+                const response = await fetch(`${API_BASE}/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: this.email.trim(),
+                        user_pw: this.password,
+                        user_name: this.userNickname.trim(),
+                        user_birth: this.userBirth.trim(),
+                        user_un: this.userSchool.trim(),
+                        user_sp: this.userMajor.trim()
+                    })
+                })
+                const data = await response.json().catch(() => ({}))
+                if (!response.ok) {
+                    showMessage(signupError(data, '가입을 저장하지 못했습니다.'), 'warning')
+                    return
+                }
+                await showMessage('가입되었습니다. 로그인해 주세요.', 'success')
+                this.$router.push('/login')
+            } catch (err) {
+                showMessage('가입 요청을 완료하지 못했습니다. 다시 시도해 주세요.', 'warning')
+            }
         }
     }
 }

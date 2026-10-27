@@ -6,6 +6,12 @@
       <span v-if="sliceLabel" class="slice-badge">{{ sliceLabel }}</span>
     </div>
     <p class="feedback">{{ feedbackText }}</p>
+    <ul v-if="kneeFindings.length" class="finding-list">
+      <li v-for="item in kneeFindings" :key="'knee-' + (item.label || item.label_ko)">
+        {{ findingLine(item) }}
+      </li>
+    </ul>
+    <p v-if="kneeDisclaimer" class="disclaimer">{{ kneeDisclaimer }}</p>
 
     <div ref="frame" class="image-panel">
       <img
@@ -113,6 +119,15 @@ export default {
       if (this.usingMock) {
         return '정답 병변을 부분적으로 포함했으나 범위가 정답보다 넓습니다. 정상 폐실질 및 심 음영을 확인해주세요.'
       }
+      const task = this.grade.classification && this.grade.classification.task
+      const graded = this.grade.result === '정답' || this.grade.result === '부분정답' || this.grade.result === '오답'
+      if ((task === 'knee-mri' || task === 'knee') && !graded) {
+        return this.grade.overlay_summary || '무릎 MRI를 채점하지 못했습니다.'
+      }
+      if (this.grade.result === '판독') {
+        const name = (this.grade.classification && this.grade.classification.top_label_ko) || '소견'
+        return `뇌 MRI로 판독했습니다. 가장 높은 소견은 ${name}입니다. 뇌 CT 출혈 모델은 사용하지 않습니다.`
+      }
       const sliceHint = this.sliceLabel ? ` (${this.sliceLabel})` : ''
       if (this.grade.result === '정답') {
         return `정답 병변을 잘 포함했습니다. 선택한 범위가 실제 이상 부위와 대체로 일치합니다.${sliceHint}`
@@ -121,6 +136,14 @@ export default {
         return `정답 병변을 부분적으로 포함했으나 범위가 정답과 완전히 같지는 않습니다. 색칠된 위치와 비교해 보세요.${sliceHint}`
       }
       return `선택한 영역이 정답 병변과 거의 겹치지 않습니다. 색칠된 정답 위치를 다시 확인해 주세요.${sliceHint}`
+    },
+    kneeFindings() {
+      if (!this.grade.classification || this.grade.classification.task !== 'knee-mri') return []
+      return this.grade.classification.findings || []
+    },
+    kneeDisclaimer() {
+      if (!this.kneeFindings.length) return ''
+      return this.grade.disclaimer || ''
     },
     answerShape() {
       const box = this.grade.abnormality_bbox
@@ -157,6 +180,14 @@ export default {
         frame.clientWidth,
         frame.clientHeight
       )
+    },
+    findingLine(item) {
+      const name = item.label_ko || item.label || '소견'
+      if (item.status === 'not_evaluated') return `${name} · ${item.reason || '평가하지 않음'}`
+      const prob = Number(item.score)
+      const score = Number.isFinite(prob) ? ` (${prob.toFixed(3)})` : ''
+      const verdict = item.verdict || name
+      return `${name} · ${verdict}${score}`
     },
     shapeStyle(shape) {
       if (!this.layout || !shape) return { display: 'none' }
@@ -210,6 +241,22 @@ h2 {
 .badge.wrong {
   background: #fee2e2;
   color: #991b1b;
+}
+.badge.read {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.finding-list {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #0f172a;
+}
+.disclaimer {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #64748b;
 }
 .slice-badge {
   padding: 4px 10px;

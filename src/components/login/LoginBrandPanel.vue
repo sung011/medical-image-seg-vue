@@ -3,9 +3,7 @@
     <div class="login-brand__glow" aria-hidden="true"/>
     <div class="login-brand__grid" aria-hidden="true"/>
     <div class="login-brand__content">
-      <h1 class="login-brand__logo">
-        <!--        <span class="login-brand__logo-med">Med</span><span class="login-brand__logo-lens">Lens</span>-->
-      </h1>
+      <h1 class="login-brand__logo">메디스캔노트</h1>
       <p class="login-brand__tagline">의료영상 판독 학습</p>
     </div>
   </aside>

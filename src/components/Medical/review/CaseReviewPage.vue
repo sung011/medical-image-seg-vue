@@ -36,7 +36,7 @@ import PageFrame from '../../main/PageFrame.vue'
 import ReviewResultPanel from './ReviewResultPanel.vue'
 import ReviewSummaryPanel from './ReviewSummaryPanel.vue'
 import {getUserSession} from '../../login/authSession'
-import { createDefaultReview, fetchSavedReview, loadReviewFromStorage } from './reviewModel'
+import { createDefaultReview, fetchLearnerReview, fetchSavedReview, loadReviewFromStorage, mapRetryProblem } from './reviewModel'
 
 export default {
   name: 'CaseReviewPage',
@@ -50,11 +50,17 @@ export default {
       ...createDefaultReview(),
       loading: false,
       loadError: '',
-      studyIdx: null
+      studyIdx: null,
+      retryProblem: null,
+      retryChecked: false
     }
   },
   computed: {
     canRetry() {
+      const reviewIdx = Number(this.$route.query.review)
+      const fromHistory = Number.isFinite(reviewIdx) && reviewIdx >= 1
+      if (!fromHistory) return false
+      if (this.retryChecked) return this.retryProblem != null
       return this.retryStudyIdx != null
     },
     retryStudyIdx() {
@@ -88,9 +94,22 @@ export default {
       const studyIdx = Number(saved.studyIdx)
       this.studyIdx = Number.isFinite(studyIdx) && studyIdx >= 1 ? studyIdx : null
     },
+    async loadRetry(reviewIdx, userIdx) {
+      this.retryProblem = null
+      this.retryChecked = false
+      try {
+        const review = await fetchLearnerReview(reviewIdx, userIdx)
+        this.retryProblem = mapRetryProblem(review && review.problem)
+        this.retryChecked = true
+      } catch (_) {
+        this.retryChecked = false
+      }
+    },
     async loadReview() {
       const reviewIdx = Number(this.$route.query.review)
       if (!Number.isFinite(reviewIdx) || reviewIdx < 1) {
+        this.retryProblem = null
+        this.retryChecked = false
         const saved = loadReviewFromStorage()
         if (saved) this.applyReview(saved)
         return
@@ -110,6 +129,7 @@ export default {
       }
       try {
         this.applyReview(await fetchSavedReview(reviewIdx, userIdx))
+        await this.loadRetry(reviewIdx, userIdx)
       } catch (e) {
         this.loadError = e.message || '채점 기록을 불러오지 못했습니다.'
       } finally {
@@ -123,13 +143,14 @@ export default {
       }
     },
     onRetrySubmit() {
-      const studyIdx = this.retryStudyIdx
+      const problem = this.retryProblem
+      const studyIdx = problem ? problem.idx : this.retryStudyIdx
       if (studyIdx == null) return
       this.$router.push({
         path: '/medical',
         query: {
-          region: this.$route.query.region || 'brain',
-          type: this.$route.query.type || this.type || 'CT',
+          region: (problem && problem.region) || this.$route.query.region || 'brain',
+          type: (problem && problem.type) || this.$route.query.type || this.type || 'CT',
           idx: String(studyIdx)
         }
       })

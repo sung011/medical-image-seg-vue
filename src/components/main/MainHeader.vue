@@ -1,7 +1,7 @@
 <template>
   <header class="header_main">
     <div class="main-header">
-      <router-link class="main-header__brand" to="/main">MedLens</router-link>
+      <router-link class="main-header__brand" to="/main">메디스캔노트</router-link>
       <nav class="main-header__nav" aria-label="메인 메뉴">
         <router-link class="main-header__link" to="/learning">학습</router-link>
         <router-link class="main-header__link" to="/note">오답노트</router-link>

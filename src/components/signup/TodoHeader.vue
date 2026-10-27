@@ -1,6 +1,6 @@
 <template>
   <header class="signup-header">
-    <div class="top-logo">MedLens</div>
+    <div class="top-logo">메디스캔노트</div>
     <span class="top-span">의료영상을 배우고, 더 깊이 이해하다</span>
   </header>
 </template>

@@ -11,10 +11,35 @@
               <span class="step" :class="{ on: step > 2 }">③ 분석</span>
             </div>
             <div class="toolbar">
+              <label class="target-field">
+                분석
+                <select v-model="target">
+                  <option v-for="item in targets" :key="item.id" :value="item.id">{{ item.label }}</option>
+                </select>
+              </label>
+              <label v-if="target === 'brain-mri'" class="target-field">
+                시퀀스
+                <select v-model="mriSequence">
+                  <option v-for="item in mriSequences" :key="item" :value="item">{{ item }}</option>
+                </select>
+              </label>
+              <label v-if="target === 'knee'" class="target-field">
+                촬영면
+                <select v-model="kneePlane">
+                  <option v-for="item in planes" :key="item.id" :value="item.id">{{ item.label }}</option>
+                </select>
+              </label>
+              <label v-if="target === 'knee'" class="target-field">
+                범위
+                <select v-model="kneeScope">
+                  <option v-for="item in scopes" :key="item.id" :value="item.id">{{ item.label }}</option>
+                </select>
+              </label>
               <button type="button" :disabled="sharing" @click="onShare">화면 공유 시작</button>
               <button type="button" class="secondary" :disabled="!hasRoi" @click="onClear">박스 지우기</button>
               <button type="button" :disabled="!hasRoi || analyzing" @click="onAnalyze">선택 영역 분석</button>
               <button
+                  v-if="target === 'brain'"
                   type="button"
                   class="secondary"
                   :class="{ 'is-loading': explaining }"
@@ -76,24 +101,23 @@
             </div>
 
             <div v-else class="result-card">
-              <h3>{{ resultTitle }}</h3>
+              <h3>{{ resultView.title }}</h3>
               <div class="meta">
-                <div>ROI 크기: <strong>{{ analysis.roi.width }}×{{ analysis.roi.height }}</strong></div>
-                <div>밝기 평균/편차: <strong>{{ analysis.image_stats.mean }}</strong> / <strong>{{
-                    analysis.image_stats.std
-                  }}</strong></div>
-                <div>추론 시간: <strong>{{ analysis.latency_ms }}ms</strong></div>
-                <div v-if="analysis.overlay_summary">이상 부위: <strong>{{ analysis.overlay_summary }}</strong></div>
+                <div v-for="line in resultView.meta" :key="line">{{ line }}</div>
               </div>
+              <p v-for="line in resultView.notes" :key="line" class="meta">{{ line }}</p>
               <div class="prob-list">
-                <div v-for="group in probGroups" :key="group.title" class="prob-group">
+                <div v-for="group in resultView.groups" :key="group.title" class="prob-group">
                   <p class="prob-label">{{ group.title }}</p>
                   <div v-for="finding in group.findings" :key="group.title + finding.label" class="finding">
                     <div class="finding-row">
                       <span>{{ finding.label_ko }}</span>
-                      <strong>{{ percent(finding.score) }}%</strong>
+                      <strong>{{ finding.scoreText }}</strong>
                     </div>
-                    <div class="bar"><span :style="{ width: percent(finding.score) + '%' }"></span></div>
+                    <div v-if="finding.percent != null" class="bar">
+                      <span :style="{ width: finding.percent + '%' }"></span>
+                    </div>
+                    <p v-if="finding.note" class="meta">{{ finding.note }}</p>
                   </div>
                 </div>
               </div>
@@ -135,7 +159,8 @@
             <div class="disclaimer">
               ※ 본 화면은 <strong>가능성 검증용 프로토타입</strong>입니다.
               실제 의료 진단이 아니며, 최종 판단은 의사에게 있습니다.
-              분석은 B4+ConvNeXt+ResNet18 앙상블 API를 사용하며, 해설은 HuggingFace MedGemma를 사용합니다.
+              분석은 고른 대상(뇌 CT, 흉부 X-ray, 뇌 MRI, 무릎 MRI) API를 사용합니다.
+              한국어 판독은 뇌 CT의 MedGemma 해설만 있습니다.
             </div>
           </div>
         </section>
@@ -146,7 +171,20 @@
 
 <script>
 import PageFrame from '../main/PageFrame.vue'
-import {analyzeScreenRoi, cropRect, explainScreenRoi, parseReport} from './screenAnalyze'
+import {
+  analyzeBrainMri,
+  analyzeKneeScreen,
+  analyzeScreenRoi,
+  analyzeTargets,
+  analyzeThoraxScreen,
+  brainMriSequences,
+  cropRect,
+  explainScreenRoi,
+  kneePlanes,
+  kneeScopes,
+  parseReport,
+  presentAnalysis
+} from './screenAnalyze'
 
 export default {
   name: 'ScreenAnalyzePage',
@@ -170,30 +208,31 @@ export default {
       explainVisible: false,
       explainLoading: false,
       explainError: '',
-      explainSections: []
+      explainSections: [],
+      target: 'brain',
+      analyzedTarget: 'brain',
+      targets: analyzeTargets(),
+      mriSequence: 'unknown',
+      mriSequences: brainMriSequences(),
+      kneePlane: 'sagittal',
+      kneeScope: 'roi_crop',
+      planes: kneePlanes(),
+      scopes: kneeScopes()
     }
   },
   computed: {
-    resultTitle() {
-      if (!this.analysis || !this.analysis.classification) return '의심 소견'
-      const top = this.analysis.classification
-      const germinoma = this.analysis.germinoma
-      let title = `출혈 최상위: ${top.top_label_ko}`
-      if (germinoma) {
-        title += ` · germinoma: ${germinoma.top_label_ko} ${this.percent(germinoma.confidence)}%`
+    resultView() {
+      return presentAnalysis(this.analyzedTarget, this.analysis) || {
+        title: '의심 소견',
+        meta: [],
+        notes: [],
+        groups: []
       }
-      return title
-    },
-    probGroups() {
-      if (!this.analysis || !this.analysis.classification) return []
-      const groups = [{
-        title: '출혈 (ICH)',
-        findings: this.analysis.classification.findings || []
-      }]
-      if (this.analysis.germinoma && this.analysis.germinoma.findings) {
-        groups.push({title: 'Germinoma', findings: this.analysis.germinoma.findings})
-      }
-      return groups
+    }
+  },
+  watch: {
+    target() {
+      this.resetAnalysis()
     }
   },
   created() {
@@ -210,9 +249,6 @@ export default {
     this.stopShare()
   },
   methods: {
-    percent(score) {
-      return (Number(score) * 100).toFixed(0)
-    },
     bullets(section) {
       return (section.blocks || []).filter((block) => block.type === 'bullet')
     },
@@ -427,27 +463,36 @@ export default {
       this.analyzing = true
       this.hasAnalysis = false
       this.step = 3
-      this.setStatus('앙상블 모델 분석 중…')
+      this.setStatus(this.target === 'brain' ? '앙상블 모델 분석 중…' : '선택 영역 분석 중…')
       this.cropUrl = canvas.toDataURL('image/png')
       try {
         const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
-        const result = await analyzeScreenRoi(blob)
+        const result = await this.runAnalysis(blob)
+        const view = presentAnalysis(this.target, result)
         this.lastRoiBlob = blob
+        this.analyzedTarget = this.target
         this.analysis = result
         this.hasAnalysis = true
-        this.overlayUrl = result.overlay_png_base64
-            ? `data:image/png;base64,${result.overlay_png_base64}`
+        this.overlayUrl = view && view.overlay
+            ? `data:image/png;base64,${view.overlay}`
             : ''
         this.explainVisible = false
         this.explainLoading = false
         this.explainError = ''
         this.explainSections = []
-        this.setStatus(`분석 완료 (${result.latency_ms}ms) · AI 해설을 요청할 수 있습니다.`)
+        const done = `분석 완료 (${result.latency_ms}ms)`
+        this.setStatus(view && view.explainable ? `${done} · AI 해설을 요청할 수 있습니다.` : done)
       } catch (e) {
         this.setStatus(`분석 실패: ${e.message}`)
       } finally {
         this.analyzing = false
       }
+    },
+    runAnalysis(blob) {
+      if (this.target === 'thorax') return analyzeThoraxScreen(blob)
+      if (this.target === 'brain-mri') return analyzeBrainMri(blob, this.mriSequence)
+      if (this.target === 'knee') return analyzeKneeScreen(blob, this.kneePlane, this.kneeScope)
+      return analyzeScreenRoi(blob)
     },
     async onExplain() {
       if (!this.analysis || !this.lastRoiBlob) return
@@ -593,6 +638,23 @@ export default {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
+  align-items: center;
+}
+
+.target-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #5a6a7e;
+}
+
+.target-field select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  color: var(--text);
 }
 
 button {

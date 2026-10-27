@@ -4,12 +4,12 @@
 
 ## 공통
 
-- [x] 백엔드 주소는 `src/apiBase.js`의 `API_BASE` 한곳이다. 기본값은 `http://127.0.0.1:8000`이고, 로그인·팝업·문의·오늘 현황·오답노트·학습 기록·채점 이미지·문제·채점·용어 요청이 이 값을 붙인다
+- [x] 백엔드 주소는 `src/apiBase.js`의 `API_BASE` 한곳이다. 페이지를 연 주소가 `127.0.0.1` 또는 `localhost`이면 `http://127.0.0.1:8000`이다. 그 외 호스트면 같은 호스트의 8000포트다. 주소에 `?api=`를 붙이거나 `localStorage` 키 `medlens_api_base`가 있으면 그 값을 쓴다. 로그인·팝업·문의·오늘 현황·오답노트·학습 기록·채점 이미지·문제·채점·용어 요청이 이 값을 붙인다
 - [x] 안내 알림은 브라우저 `alert` 대신 SweetAlert2다. 호출은 `src/notify.js`의 `showMessage`만 사용한다
 - [x] `/` 는 세션이 있으면 `/main`, 없으면 `/login`
 - [x] 로그아웃은 `medlens_user`와 `medlens.review`를 지우고 `/login`으로 간다
 - [x] `/medical`, `/medical/review`, `/main`, `/learning`, `/note`, `/history` 는 세션이 없으면 `/login`으로 보낸다
-- [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. MedLens, 학습, 오답노트, 마이페이지, 문의하기, 이름·로그아웃이 같다
+- [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. 메디스캔노트, 학습, 오답노트, 마이페이지, 문의하기, 이름·로그아웃이 같다
 - [x] 헤더 "문의하기"는 그 페이지에서 채팅 창을 연다
 - [x] 풀이 화면의 "가이드"는 케이스 정보 줄에 있고, 원/박스 드래그, 제출, 리뷰 순서를 패널로 보여 준다
 
@@ -17,7 +17,7 @@
 
 - [x] 세션 이름으로 "안녕하세요, {이름}님"을 보여 준다
 - [x] "학습하기"와 "학습 시작"은 `/learning`으로 이동한다
-- [x] 헤더에 MedLens, 학습, 오답노트, 마이페이지, 사용자 메뉴(로그아웃)를 보여 준다
+- [x] 헤더에 메디스캔노트, 학습, 오답노트, 마이페이지, 사용자 메뉴(로그아웃)를 보여 준다
 - [x] 오늘의 학습 현황은 세션 `idx`로 `GET /learning/today?user_idx=`를 호출해 오늘 제출이 있는 부위만 학습 시간·학습 문제·정답률로 보여 준다
 - [x] 부위마다 학습 시간·학습 문제·정답률을 보여 준다
 - [x] 헤더 "오답노트"와 홈의 오답노트 카드는 `/note`로 이동한다
@@ -51,18 +51,25 @@
 
 - [x] 1단계: 아이디/이메일, 비밀번호, 비밀번호 확인
 - [x] 2단계: 이름(최대 5자), 생년월일, 학교, 전공
-- [ ] 1단계에서 필수값 누락과 비밀번호 불일치를 막는다
-- [ ] 2단계에서 가입 API를 호출하고, 성공하면 로그인 화면으로 보낸다
-- [ ] "가입 완료"가 1단계로 되돌아가지 않는다
+- [x] 1단계에서 필수값 누락과 비밀번호 불일치를 막는다
+- [ ] 2단계에서 가입 API를 호출하고, 성공하면 로그인 화면으로 보낸다. 서버에 학습자 가입 API가 없다. `POST /admin/user/signup`은 관리자 세션용이다
+- [x] "가입 완료"가 1단계로 되돌아가지 않는다. 가입 API가 없어 저장하지 못했다는 안내만 보여 준다
+
+## 없는 화면
+
+- 계정 찾기 화면이 없다. `POST /find-id`, `POST /find-pw/verify`, `POST /find-pw`는 연결하지 않았다
+- 무릎 MRI 전용 화면(`GET /learning/knee/task`, 제시 이미지, 무작위, 시리즈)은 없다. 풀이 화면 `/medical?region=knee&type=MRI`의 판독만 `POST /learning/roi-grade/knee`를 쓴다
+- 로그인 없는 무릎 열람 화면이 없다. `POST /learning/knee/guest/session`, `POST /learning/knee/guest/session/end`, `GET /learning/knee/guest/...`는 연결하지 않았다. 설정이 꺼져 있으면 서버가 503이다
+- 케이스 목록 화면이 없다. 풀이 화면의 "케이스 목록"은 그대로 "아직 연결 전"이다. `GET /learning/problems`는 다음으로 열 안 푼 문제를 고를 때만 쓴다
 
 ## 문제 풀이 `/medical`
 
-- [x] `GET /learning/problem` 으로 문제와 영상 경로를 불러온다. 주소에 `idx`가 있으면 그 study 영상을 가져오고, 없으면 랜덤 문제다
-- [x] 영상은 `https://kr.object.ncloudstorage.com/biz02gj`에 있고, 로딩·오류 문구를 보여 준다. 개발 서버에서는 화면이 `/stylesheets`로 요청하고, 서버가 그 경로를 버킷으로 넘긴다. 브라우저는 Object Storage를 직접 호출하지 않아 CORS에 막히지 않는다
+- [x] `GET /learning/problems?st_part=&st_modal=&user_idx=`로 그 부위·영상의 문제 목록과 풀었는지를 받고, 아직 안 푼 첫 문제를 `GET /learning/problem/{번호}`로 연다. 주소에 `idx`가 있으면 목록을 거치지 않고 그 번호만 연다. 정답 병명은 응답에 없다
+- [x] 영상 바이트는 `GET /learning/problem/{번호}/image`로 받는다. MRI는 `?slice_index=`(0부터)를 붙인다. CT 등은 0번 한 장이다
 - [x] `type=MRI` 이고 `st_image`가 경로 배열이면 슬라이더·휠로 슬라이스를 넘긴다. CT 등은 한 장만 쓴다
 - [x] MRI 슬라이스는 받은 장을 캐시하고 근처 장을 미리 받아 스크롤을 부드럽게 한다
 - [x] ROI 도구: 원, 박스, 지우기. 드래그로 영역을 추가한다
-- [x] 제출은 `POST /learning/roi-grade`. 여러 ROI면 마지막 영역으로 채점한다
+- [x] 제출 판독은 부위와 영상 종류로 고른다. 뇌 CT와 흉부 X-ray는 `POST /learning/roi-grade`(흉부는 서버가 흉부 모델로 채점), 뇌 MRI는 `POST /api/v1/analyze/brain-mri`, 무릎 MRI는 박스로 `POST /learning/roi-grade/knee`다. 무릎은 이미지 파일을 보내지 않고 `study_idx`, `roi_type=box`, `x`, `y`, `width`, `height`, `slice_index`(0부터), 로그인한 회원 `user_idx`(세션이 없으면 1)만 보낸다. `result`가 정답·부분정답·오답이면 그 값을 그대로 쓰고, `iou`는 정확도, `recall`은 포함률, `reference_bbox`는 정답 박스다. `reading`이 없을 때만 미채점 문구를 쓴다. 복부 등 모델이 없는 조합은 뇌 API를 호출하지 않고 안내만 한다. 여러 ROI면 마지막 영역으로 채점한다
 - [x] MRI 제출은 `slice_index`(0-based)와 `image_path`를 함께 보내고, CT는 기존처럼 생략한다
 - [x] 채점 결과와 사용자 ROI·슬라이스 정보를 `medlens.review`에 저장하고 `/medical/review`로 이동한다
 - [x] 오른쪽 용어 사전은 `GET /glossary` 결과를 보여 준다
@@ -70,11 +77,12 @@
 
 ## 채점 리뷰 `/medical/review`
 
-- [x] 저장된 영상, 사용자 ROI, 오버레이, 판정(정답/부분정답/그 외)을 보여 준다
+- [x] 저장된 영상, 사용자 ROI, 오버레이, 판정(정답/부분정답/오답, 뇌 MRI는 판독)을 보여 준다. 무릎 MRI의 정답·부분정답·오답 배지와 문구는 뇌 CT와 같다. `reference_bbox`가 있으면 정답 박스로 그린다
 - [x] MRI면 제출한 슬라이스 번호(예: 슬라이스 43 / 190)를 결과·요약에 보여 준다
-- [x] 결과 요약에 출혈(ICH) `classification.findings`와 `germinoma`(생식세포종양) 확률을 보여 준다
+- [x] 결과 요약의 소견 제목은 채점 `classification.task`를 따른다. `hemorrhage`는 출혈(ICH)과 germinoma, `thorax`는 흉부 소견, `brain-mri`는 뇌 MRI, `knee`와 `knee-mri`는 무릎 MRI다. `knee-mri`는 `label_ko`, `verdict`, `prob`를 목록으로 보여주고, `status`가 `not_evaluated`이면 점수 대신 `reason`을 보여 준다. 무릎의 정답·부분정답·오답 문구는 뇌 CT와 같다
 - [x] 제출은 `review_node`에 포함률(`rn_recall`), ROI 정확도(`rn_iou`), 위치 요약(`rn_overlay_summary`), 출혈·germinoma 소견(`rn_findings`), MRI 슬라이스(`rn_slice_index`)를 남긴다
-- [x] 주소에 `review`가 있으면 `GET /learning/review?idx=&user_idx=`로 그 제출의 채점 이미지와 결과 요약을 보여 준다. 없으면 저장값을 쓰고, 저장값도 없으면 화면용 기본 채점 데이터를 쓴다. 예전 제출은 요약 칸이 비어 포함률을 `—`로 둔다
+- [x] 결과 요약의 병명 해설은 채점 응답의 `learning_note`가 있으면 그 이름·요약·소견·함정을 보여 준다. 흉부 채점은 같은 `POST /learning/roi-grade`가 소견마다 해설을 붙인다
+- [x] 주소에 `review`가 있으면 채점 이미지는 `GET /learning/review?idx=&user_idx=`로 보고, 다시 풀 수 있는지는 `GET /learning/reviews/{번호}?user_idx=`의 `problem`으로 본다. `problem`이 없으면 "다시 제출"을 숨긴다. 채점 이미지 응답이 없으면 저장값을 쓰고, 저장값도 없으면 화면용 기본 채점 데이터를 쓴다. 예전 제출은 요약 칸이 비어 포함률을 `—`로 둔다
 - [x] "다음 문제"는 같은 `region`, `type`으로 `/medical`에 돌아간다
 - [x] 학습 기록에서 연 리뷰의 "다시 제출"은 그 `region`, `type`, `idx`로 `/medical`에 간다. 풀이 화면이 그 문제 영상을 불러오고, 제출은 그 이미지를 `POST /learning/roi-grade`로 다시 보낸다
 - [x] "학습 종료"는 풀이 화면이 아니라 `/main`(로그인 유지 홈)으로 보낸다
@@ -82,7 +90,7 @@
 ## 오답노트 `/note`
 
 - [x] 학습 설정과 같은 왼쪽 메뉴와 상단 `MainHeader`를 쓴다. 메뉴의 "오답노트"가 선택된다
-- [x] `GET /learning/notes?user_idx=`로 세션 `idx`의 오답·부분정답을 보여 준다. 같은 문제는 가장 최근 제출만 보고, 그 결과가 오답·부분정답일 때만 카드로 남긴다
+- [x] `GET /learning/reviews?user_idx=`로 세션 `idx`의 오답·부분정답을 보여 준다. 같은 문제는 가장 최근 제출만 보고, 그 결과가 오답·부분정답일 때만 카드로 남긴다
 - [x] 전체·오답·부분정답으로 거르고, 최신순·오래된순으로 정렬한다. 한 페이지에 8장이고, 항목이 있으면 번호가 보인다
 - [x] "다시 풀기"는 그 카드의 `region`, `type`, `idx`(study)로 `/medical`에 간다
 - [x] 항목이 없으면 "틀린 문제가 아직 없어요."를 보여 준다
@@ -101,6 +109,6 @@
 
 - [x] 로그인 없이 연다. 상단 헤더는 다른 페이지와 같은 `MainHeader`다. 왼쪽은 화면 공유·ROI, 오른쪽은 분석 결과다
 - [x] "화면 공유 시작"은 브라우저 화면 공유를 받고, 휠로 스크롤한 뒤 드래그로 네모 박스를 그린다
-- [x] "선택 영역 분석"은 자른 이미지를 `POST ${API_BASE}/api/v1/analyze/screen-roi`로 보내고 출혈·germinoma 확률과 오버레이를 보여 준다. 오른쪽 결과 칸은 그 안에서 스크롤한다
-- [x] "AI 해설 (MedGemma)"는 분석이 끝난 뒤 `POST ${API_BASE}/api/v1/analyze/screen-roi/explain`으로 한국어 판독문을 받아 보여 준다
+- [x] "선택 영역 분석"은 고른 대상으로 자른 이미지를 보낸다. 뇌 CT는 `POST ${API_BASE}/api/v1/analyze/screen-roi`와 출혈·germinoma 확률, 흉부 X-ray는 모델 준비 `GET ${API_BASE}/api/v1/thorax/health` 뒤 `POST ${API_BASE}/api/v1/thorax/analyze/screen-roi`(판독문 없음), 뇌 MRI는 `GET ${API_BASE}/api/v1/brain-mri/health` 뒤 `POST ${API_BASE}/api/v1/analyze/brain-mri`(PNG/JPEG, 시퀀스 선택), 무릎 MRI는 촬영면·범위와 함께 `POST ${API_BASE}/api/v1/knee/screen-roi`다. 오른쪽 결과 칸은 그 안에서 스크롤한다
+- [x] "AI 해설 (MedGemma)"는 뇌 CT 분석이 끝난 뒤에만 켜지고, `POST ${API_BASE}/api/v1/analyze/screen-roi/explain`으로 한국어 판독문을 받아 보여 준다
 - [x] "박스 지우기"는 공유를 유지한 채 박스와 결과를 지우고, "공유 종료"는 공유와 결과를 처음 상태로 되돌린다

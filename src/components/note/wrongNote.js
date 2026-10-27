@@ -1,7 +1,20 @@
 import {API_BASE} from '../../apiBase'
 import {buildImageUrl} from '../../imageBase'
 
-const NOTES_API = `${API_BASE}/learning/notes`
+const NOTES_API = `${API_BASE}/learning/reviews`
+
+const PART_REGION = {
+    '1': 'brain',
+    '2': 'chest',
+    '3': 'abdomen',
+    '4': 'knee'
+}
+
+const MODAL_TYPE = {
+    '1': 'x-ray',
+    '2': 'CT',
+    '3': 'MRI'
+}
 
 export const PAGE_SIZE = 8
 
@@ -28,20 +41,34 @@ export function formatNoteDate(value) {
 }
 
 export function mapNoteItem(row) {
+    const part = String(row.st_part || '')
+    const modal = String(row.st_modal || '')
     return {
-        idx: row.idx,
+        idx: row.review_idx,
         studyIdx: row.study_idx,
         disease: row.disease || '병명 없음',
         solution: row.solution,
         solutionLabel: row.solution_label || '',
-        partLabel: row.part_label || '',
-        modalLabel: row.modal_label || '',
-        region: row.region || '',
-        type: row.type || '',
-        image: noteImageUrl(row.image),
+        partLabel: row.st_part_label || '',
+        modalLabel: row.st_modal_label || '',
+        region: PART_REGION[part] || '',
+        type: MODAL_TYPE[modal] || '',
+        image: noteImageUrl(row.image_url),
         createdAt: row.created_at || '',
         dateLabel: formatNoteDate(row.created_at)
     }
+}
+
+export function latestPerStudy(items) {
+    const seen = new Set()
+    const kept = []
+    items.forEach((item) => {
+        const key = item.studyIdx != null ? `study:${item.studyIdx}` : `review:${item.idx}`
+        if (seen.has(key)) return
+        seen.add(key)
+        kept.push(item)
+    })
+    return kept
 }
 
 export function filterNotes(items, filter) {
@@ -73,11 +100,16 @@ export function pageItems(items, page, size = PAGE_SIZE) {
 }
 
 export async function fetchWrongNotes(userIdx) {
-    const response = await fetch(`${NOTES_API}?user_idx=${encodeURIComponent(userIdx)}`)
+    const params = new URLSearchParams({
+        user_idx: String(userIdx),
+        limit: '200'
+    })
+    const response = await fetch(`${NOTES_API}?${params}`)
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
         const detail = typeof data.detail === 'string' ? data.detail : '오답노트를 불러오지 못했습니다.'
         throw new Error(detail)
     }
-    return (data.items || []).map(mapNoteItem)
+    const rows = Array.isArray(data.items) ? data.items : []
+    return latestPerStudy(rows.map(mapNoteItem))
 }

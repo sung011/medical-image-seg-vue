@@ -52,8 +52,14 @@ import XrayViewer from './XrayViewer.vue'
 import TermDictionary from './TermDictionary.vue'
 import {getUserSession} from '../login/authSession'
 import { API_BASE } from '../../apiBase'
-import { buildImageUrl } from '../../imageBase'
 import { showMessage } from '../../notify'
+import {
+  brainMriAsGrade,
+  gradeKneeRoi,
+  kneeAsGrade,
+  readBrainMri,
+  readingKind
+} from './readingGrade'
 
 const PROBLEM_API = `${API_BASE}/learning/problem`
 const ROI_GRADE_API = `${API_BASE}/learning/roi-grade`
@@ -65,17 +71,6 @@ function imagePath(path) {
   if (!path) return ''
   if (/^https?:\/\//i.test(path)) return path
   return path.startsWith('/') ? path : `/${path}`
-}
-
-/** 개발 서버 프록시로 받는 같은 출처 경로. 브라우저는 Object Storage를 직접 호출하지 않는다. */
-function proxyImageUrl(path) {
-  const value = imagePath(path)
-  if (!value) return ''
-  if (value.startsWith('/')) return value
-  const marker = '/biz02gj/'
-  const at = value.indexOf(marker)
-  if (at < 0) return ''
-  return value.slice(at + marker.length - 1)
 }
 
 function filenameFromPath(path) {
@@ -263,36 +258,20 @@ export default {
         this.sliceCache.delete(oldest)
       }
     },
-    async fetchOriginalImage(path) {
-      const viaDevServer = proxyImageUrl(path)
-      const direct = buildImageUrl(path)
-      const urls = process.env.NODE_ENV === 'development'
-          ? [viaDevServer, direct]
-          : [direct, viaDevServer]
-      const uniqueUrls = urls.filter(
-          (url, index, list) => url && list.indexOf(url) === index
-      )
-      let lastError = null
-      for (const url of uniqueUrls) {
-        try {
-          const res = await fetch(url)
-          if (!res.ok) {
-            lastError = new Error(`이미지 오류 (${res.status})`)
-            continue
-          }
-          const blob = await res.blob()
-          if (!blob || blob.size < 64) {
-            lastError = new Error('유효한 이미지가 아닙니다.')
-            continue
-          }
-          return blob
-        } catch (err) {
-          lastError = err
-        }
+    async fetchProblemSlice(index) {
+      const url = `${PROBLEM_API}/${this.studyIdx}/image?slice_index=${index}`
+      const res = await fetch(url)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(errorDetail(data, `이미지 오류 (${res.status})`))
       }
-      throw lastError || new Error('원본 이미지를 가져오지 못했습니다.')
+      const blob = await res.blob()
+      if (!blob || blob.size < 64) {
+        throw new Error('유효한 이미지가 아닙니다.')
+      }
+      return blob
     },
-    async ensureSliceEntry(path) {
+    async ensureSliceEntry(path, index) {
       const cached = this.sliceCache.get(path)
       if (cached) {
         this.touchCacheKey(path)
@@ -301,7 +280,7 @@ export default {
       const pending = this.sliceInflight.get(path)
       if (pending) return pending
 
-      const request = this.fetchOriginalImage(path)
+      const request = this.fetchProblemSlice(index)
           .then((blob) => {
             const filename = filenameFromPath(path)
             const type = blob.type || 'image/png'
@@ -328,7 +307,7 @@ export default {
         if (i === index) continue
         const path = this.slicePaths[i]
         if (!path || this.sliceCache.has(path) || this.sliceInflight.has(path)) continue
-        this.ensureSliceEntry(path).catch(() => {})
+        this.ensureSliceEntry(path, i).catch(() => {})
       }
     },
     async applySlice(index, {clearRois = false} = {}) {
@@ -340,7 +319,7 @@ export default {
       const cacheHit = this.sliceCache.has(path)
       if (!cacheHit) this.sliceLoading = true
       try {
-        const entry = await this.ensureSliceEntry(path)
+        const entry = await this.ensureSliceEntry(path, index)
         if (token !== this.sliceLoadToken) return
         this.imageFile = entry.file
         this.imageObjectUrl = entry.objectUrl
@@ -375,6 +354,46 @@ export default {
         showMessage(e.message || '슬라이스를 불러오지 못했습니다.', 'error')
       }
     },
+    async loadProblem(stPart, stModal) {
+      const requested = Number(this.$route.query.idx)
+      if (Number.isFinite(requested) && requested >= 1) {
+        return this.fetchProblemByIdx(requested)
+      }
+      const user = getUserSession()
+      const params = new URLSearchParams({
+        st_part: stPart,
+        st_modal: stModal
+      })
+      if (user?.idx != null) {
+        params.set('user_idx', String(user.idx))
+      }
+      const res = await fetch(`${PROBLEM_API}s?${params}`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(errorDetail(data, `API 오류 (${res.status})`))
+      }
+      const items = Array.isArray(data.items) ? data.items : []
+      const next = items.find((item) => !item.solved)
+      if (!next || next.idx == null) {
+        throw new Error('풀 수 있는 새 문제가 없습니다.')
+      }
+      return this.fetchProblemByIdx(next.idx)
+    },
+    async fetchProblemByIdx(studyIdx) {
+      const res = await fetch(`${PROBLEM_API}/${studyIdx}`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        if (res.status === 404) {
+          const detail = typeof data.detail === 'string' ? data.detail : '학습 문제를 찾을 수 없습니다.'
+          throw new Error(detail)
+        }
+        throw new Error(errorDetail(data, `API 오류 (${res.status})`))
+      }
+      if (!data.ok || !data.problem) {
+        throw new Error('문제를 불러오지 못했습니다.')
+      }
+      return data.problem
+    },
     async fetchProblem() {
       const stPart = this.$route.query.region || 'brain'
       const stModal = this.$route.query.type || 'CT'
@@ -391,39 +410,17 @@ export default {
       this.clearSliceCache()
 
       try {
-        const user = getUserSession()
-        const params = new URLSearchParams({
-          st_part: stPart,
-          st_modal: stModal
-        })
-        const studyIdx = Number(this.$route.query.idx)
-        if (Number.isFinite(studyIdx) && studyIdx >= 1) {
-          params.set('idx', String(studyIdx))
-        }
-        if (user?.idx != null) {
-          params.set('user_idx', String(user.idx))
-        }
-        const res = await fetch(`${PROBLEM_API}?${params}`)
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          if (res.status === 404) {
-            const detail = typeof data.detail === 'string' ? data.detail : '풀 수 있는 새 문제가 없습니다.'
-            throw new Error(detail)
-          }
-          throw new Error(`API 오류 (${res.status})`)
-        }
-        if (!data.ok || !data.problem) {
-          throw new Error('문제를 불러오지 못했습니다.')
-        }
-
-        const problem = data.problem
+        const problem = await this.loadProblem(stPart, stModal)
         const paths = normalizeStImages(problem.st_image, isMri)
         if (!paths.length) {
           throw new Error('영상 경로가 없습니다.')
         }
+        this.studyIdx = problem.idx ?? null
+        if (this.studyIdx == null) {
+          throw new Error('문제 번호가 없습니다.')
+        }
         this.slicePaths = paths
         await this.applySlice(0, {clearRois: true})
-        this.studyIdx = problem.idx ?? null
         this.caseId = String(problem.idx ?? '-').padStart(2, '0')
         const sliceNote = isMri ? ` · 슬라이스 ${paths.length}장` : ''
         this.caseSummary =
@@ -520,6 +517,41 @@ export default {
       form.append('height', String(box.height))
       return {form, box, region, type, isMri}
     },
+    async requestReading(kind, form, box) {
+      if (kind === 'brain-mri') {
+        const user = getUserSession()
+        const data = await readBrainMri(this.imageFile, {
+          x: box.x,
+          y: box.y,
+          width: box.width,
+          height: box.height,
+          user_idx: user?.idx ?? 1,
+          study_idx: this.studyIdx,
+          slice_index: this.shownSliceIndex
+        })
+        return brainMriAsGrade(data)
+      }
+      if (kind === 'knee-mri') {
+        const user = getUserSession()
+        const data = await gradeKneeRoi({
+          study_idx: this.studyIdx,
+          roi_type: 'box',
+          x: box.x,
+          y: box.y,
+          width: box.width,
+          height: box.height,
+          slice_index: this.shownSliceIndex,
+          user_idx: user?.idx ?? 1
+        })
+        return kneeAsGrade(data)
+      }
+      const res = await fetch(ROI_GRADE_API, { method: 'POST', body: form })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(errorDetail(data, `채점 오류 (${res.status})`))
+      }
+      return data
+    },
     async onSubmit() {
       if (this.submitting) return
       if (!this.imageFile) {
@@ -532,21 +564,26 @@ export default {
       }
 
       const roi = this.rois[this.rois.length - 1]
+      const region = this.$route.query.region || 'brain'
+      const type = this.$route.query.type || 'CT'
+      const kind = readingKind(region, type)
+      if (kind === 'none') {
+        showMessage('이 부위와 영상 종류에는 판독 모델이 없습니다. 뇌 CT, 뇌 MRI, 흉부 X-ray, 무릎 MRI만 판독합니다.', 'warning')
+        return
+      }
+      if (kind === 'knee-mri' && roi.type !== 'box') {
+        showMessage('무릎 MRI는 박스로만 채점합니다.', 'warning')
+        return
+      }
       this.submitting = true
 
       try {
-        const {form, box, region, type, isMri} = this.buildRoiPayload(roi)
-        if (isMri && !this.problemImagePath) {
+        const {form, box, isMri} = this.buildRoiPayload(roi)
+        if (isMri && kind !== 'brain-mri' && !this.problemImagePath) {
           throw new Error('제출할 MRI 슬라이스 경로가 없습니다.')
         }
-        const res = await fetch(ROI_GRADE_API, {
-          method: 'POST',
-          body: form
-        })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          throw new Error(errorDetail(data, `채점 오류 (${res.status})`))
-        }
+        const data = await this.requestReading(kind, form, box, roi)
+        if (!data) return
 
         const overlayPath = data.overlay_png_base64 && data.rn_image ? data.rn_image : ''
         const payload = {

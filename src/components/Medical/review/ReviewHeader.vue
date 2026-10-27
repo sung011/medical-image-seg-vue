@@ -3,7 +3,7 @@
     <div class="brand">
       <span class="logo-mark" aria-hidden="true">+</span>
       <div class="brand-text">
-        <strong>MedLens AI</strong>
+        <strong>메디스캔노트</strong>
         <span>SCORING AND EXPLANATION</span>
       </div>
     </div>

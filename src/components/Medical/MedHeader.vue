@@ -2,7 +2,7 @@
   <header class="med-header">
     <div class="med-header__left">
       <router-link class="logo" to="/main">
-        <span class="logo-text">MedLens</span>
+        <span class="logo-text">메디스캔노트</span>
       </router-link>
 
       <span class="divider" aria-hidden="true"/>
