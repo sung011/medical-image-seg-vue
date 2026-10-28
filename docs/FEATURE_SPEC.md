@@ -9,7 +9,7 @@
 - [x] `/` 는 세션이 있으면 `/main`, 없으면 `/login`
 - [x] 로그아웃은 `medlens_user`와 `medlens.review`를 지우고 `/login`으로 간다
 - [x] `/medical`, `/medical/review`, `/main`, `/learning`, `/note`, `/history` 는 세션이 없으면 `/login`으로 보낸다
-- [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. 메디스캔노트, 학습, 오답노트, 마이페이지, 문의하기, 이름·로그아웃이 같다
+- [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. 메디스캔노트, 학습, 오답노트, 화면 분석, 마이페이지, 문의하기, 이름·로그아웃이 같다. "화면 분석"은 `/analyze`로 이동한다
 - [x] 헤더 "문의하기"는 그 페이지에서 채팅 창을 연다
 - [x] 풀이 화면의 "가이드"는 케이스 정보 줄에 있고, 원/박스 드래그, 제출, 리뷰 순서를 패널로 보여 준다
 
@@ -17,11 +17,12 @@
 
 - [x] 세션 이름으로 "안녕하세요, {이름}님"을 보여 준다
 - [x] "학습하기"와 "학습 시작"은 `/learning`으로 이동한다
-- [x] 헤더에 메디스캔노트, 학습, 오답노트, 마이페이지, 사용자 메뉴(로그아웃)를 보여 준다
+- [x] 헤더에 메디스캔노트, 학습, 오답노트, 화면 분석, 마이페이지, 사용자 메뉴(로그아웃)를 보여 준다. "화면 분석"은 `/analyze`로 이동한다
 - [x] 오늘의 학습 현황은 세션 `idx`로 `GET /learning/today?user_idx=`를 호출해 오늘 제출이 있는 부위만 학습 시간·학습 문제·정답률로 보여 준다
 - [x] 부위마다 학습 시간·학습 문제·정답률을 보여 준다
 - [x] 헤더 "오답노트"와 홈의 오답노트 카드는 `/note`로 이동한다
 - [x] 홈의 학습 기록 카드는 `/history`로 이동한다
+- [x] 홈의 화면 분석 카드는 `/analyze`로 이동한다
 - [ ] 마이페이지 화면으로 이동한다
 - [x] 이벤트 팝업은 `GET http://127.0.0.1:8000/popups` 목록을 화면 왼쪽 위부터 여러 장 띄운다. 제목 줄을 끌어 각 팝업을 옮길 수 있다. ×·닫기는 그 팝업만 지금 화면에서 닫고, "오늘 하루 보지 않기"는 그 팝업만 오늘 다시 뜨지 않는다
 - [x] `pp_link`가 있을 때만 "참여하기"를 보여 준다. http 주소는 새 탭, 그 외 경로는 앱 안에서 이동한다

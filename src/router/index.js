@@ -62,7 +62,8 @@ const router = createRouter({
         },
         {
             path: '/analyze',
-            component: ScreenAnalyzePage
+            component: ScreenAnalyzePage,
+            beforeEnter: requireSession
         },
         {
             path: '/note',

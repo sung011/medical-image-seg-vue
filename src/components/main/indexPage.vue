@@ -28,6 +28,10 @@
           <h2 class="nav-card__title">학습 기록</h2>
           <p class="nav-card__desc">학습 분석을 통해 성장 과정을 확인해보세요.</p>
         </router-link>
+        <router-link class="nav-card" to="/analyze">
+          <h2 class="nav-card__title">화면 분석</h2>
+          <p class="nav-card__desc">공유한 화면에서 영역을 골라 모델 점수를 확인해요.</p>
+        </router-link>
       </section>
 
       <section class="status">
@@ -187,7 +191,7 @@ export default {
 
 .nav-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-top: 16px;
 }
@@ -309,7 +313,10 @@ export default {
     height: 120px;
   }
 
-  .nav-cards,
+  .nav-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .status__grid {
     grid-template-columns: 1fr;
   }

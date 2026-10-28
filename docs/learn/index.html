@@ -307,7 +307,7 @@ const LOGIN_API = `${API_BASE}/login`</code></pre>
       <section id="home">
         <h2>메인 홈</h2>
         <h3>무엇을 하나</h3>
-        <p>로그인한 사용자가 인사말·학습 바로가기·오늘의 학습 현황을 보는 홈 화면이다. 왼쪽 위에는 서버에서 받은 이벤트 홍보 팝업이 여러 장 뜨고, 제목 줄을 끌어 각 팝업을 옮길 수 있다. 헤더 "문의하기"로 채팅 창을 연다. 현황은 오늘 그 계정이 제출한 부위만 나온다. 오답노트는 <code>/note</code>, 학습 기록은 <code>/history</code>로 이동한다. 마이페이지 링크는 아직 목업이다.</p>
+        <p>로그인한 사용자가 인사말·학습 바로가기·오늘의 학습 현황을 보는 홈 화면이다. 왼쪽 위에는 서버에서 받은 이벤트 홍보 팝업이 여러 장 뜨고, 제목 줄을 끌어 각 팝업을 옮길 수 있다. 헤더 "문의하기"로 채팅 창을 연다. 현황은 오늘 그 계정이 제출한 부위만 나온다. 오답노트는 <code>/note</code>, 학습 기록은 <code>/history</code>, 화면 분석은 <code>/analyze</code>로 이동한다. 마이페이지 링크는 아직 목업이다.</p>
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>src/components/main/indexPage.vue</code> — 홈 레이아웃, 세션 이름, 바로가기, 부위별 현황 카드. 팝업과 채팅을 붙인다.</li>
@@ -324,7 +324,7 @@ const LOGIN_API = `${API_BASE}/login`</code></pre>
         <ol>
           <li>주소가 <code>/main</code>이면 <code>requireSession</code>이 세션을 확인한다. 없으면 <code>/login</code>으로 보낸다.</li>
           <li><code>indexPage</code>가 <code>getUserSession()</code>으로 이름을 읽어 "안녕하세요, {이름}님"을 보여 준다.</li>
-          <li>"학습하기"와 "학습 시작"은 <code>/learning</code>으로 이동한다. 헤더의 "학습"도 같다.</li>
+          <li>"학습하기"와 "학습 시작"은 <code>/learning</code>으로 이동한다. 헤더의 "학습"도 같다. 홈 카드 "화면 분석"과 헤더 "화면 분석"은 <code>/analyze</code>로 이동한다.</li>
           <li>헤더 오른쪽 이름·아바타를 누르면 로그아웃이 나온다. 누르면 세션과 채점 저장을 지우고 <code>/login</code>으로 간다.</li>
           <li>오답노트는 <code>/note</code>로, 학습 기록 카드는 <code>/history</code>로 이동한다. 마이페이지는 화면이 없어 클릭해도 이동하지 않는다.</li>
           <li><code>fetchTodayStudyStats()</code>가 세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/today?user_idx=</code>를 호출한다. <code>items</code>의 <code>part_label</code>, <code>study_minutes</code>, <code>problem_count</code>, <code>correct_rate</code>를 학습 시간·학습 문제·정답률로 보여 준다. 오늘 제출이 없으면 안내 문구를 보여 준다.</li>
@@ -460,7 +460,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
         </ul>
         <h3>동작 순서</h3>
         <ol>
-          <li>주소 <code>/analyze</code>는 로그인 없이도 열린다. 상단은 홈과 같은 메디스캔노트, 학습, 오답노트, 마이페이지, 문의하기, 사용자 메뉴다.</li>
+          <li>주소 <code>/analyze</code>는 로그인 없이도 열린다. 상단은 홈과 같은 메디스캔노트, 학습, 오답노트, 화면 분석, 마이페이지, 문의하기, 사용자 메뉴다. 홈 카드와 헤더의 "화면 분석"이 이 주소로 온다.</li>
           <li>"화면 공유 시작"이 브라우저 화면 공유를 받는다. 취소하면 "화면 공유가 취소되었거나 권한이 없습니다."를 보여 준다.</li>
           <li>공유된 영상 위에서 휠로 스크롤하고, 드래그로 네모 박스를 그린다. 가로·세로가 8픽셀보다 커야 분석 버튼이 켜진다.</li>
           <li>"선택 영역 분석"은 왼쪽 "분석"에서 고른 대상으로 박스를 자른다. 뇌 CT는 <code>POST ${API_BASE}/api/v1/analyze/screen-roi</code>다. 흉부 X-ray는 <code>GET ${API_BASE}/api/v1/thorax/health</code>로 모델이 준비됐는지 본 뒤 <code>POST ${API_BASE}/api/v1/thorax/analyze/screen-roi</code>로 소견 박스와 점수를 받고, 판독 버튼은 없다. 뇌 MRI는 <code>GET ${API_BASE}/api/v1/brain-mri/health</code> 뒤 <code>POST ${API_BASE}/api/v1/analyze/brain-mri</code>로 5질환 위치와 점수를 받는다. 파일 이름은 <code>mri.png</code>이고, 시퀀스를 고를 수 있다. DICOM은 보내지 않는다. 무릎 MRI는 촬영면·범위와 함께 <code>POST ${API_BASE}/api/v1/knee/screen-roi</code>로 이상·ACL·반월판과 ACL 위치를 받는다. ACL 위치는 시상면과 슬라이스 전체일 때 의미가 있다.</li>
