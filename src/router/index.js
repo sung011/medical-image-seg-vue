@@ -8,6 +8,7 @@ import LearningSetupPage from '../components/learning/LearningSetupPage.vue'
 import ScreenAnalyzePage from '../components/analyze/ScreenAnalyzePage.vue'
 import WrongNotePage from '../components/note/WrongNotePage.vue'
 import LearningHistoryPage from '../components/history/LearningHistoryPage.vue'
+import GlossaryPage from '../components/glossary/GlossaryPage.vue'
 import {getUserSession} from '../components/login/authSession'
 
 function requireSession(to, from, next) {
@@ -73,6 +74,11 @@ const router = createRouter({
         {
             path: '/history',
             component: LearningHistoryPage,
+            beforeEnter: requireSession
+        },
+        {
+            path: '/glossary',
+            component: GlossaryPage,
             beforeEnter: requireSession
         }
     ]

@@ -1,9 +1,12 @@
 <template>
   <header class="header_main">
     <div class="main-header">
-      <router-link class="main-header__brand" to="/main">메디스캔노트</router-link>
+      <router-link class="main-header__brand" to="/main" aria-label="Mediscan Note">
+        <BrandMark/>
+      </router-link>
       <nav class="main-header__nav" aria-label="메인 메뉴">
         <router-link class="main-header__link" to="/learning">학습</router-link>
+        <!--        <router-link class="main-header__link" to="/glossary">용어 사전</router-link>-->
         <router-link class="main-header__link" to="/note">오답노트</router-link>
         <router-link class="main-header__link" to="/analyze">화면 분석</router-link>
         <a class="main-header__link" href="#" @click.prevent>마이페이지</a>
@@ -14,12 +17,12 @@
       <div v-if="user" class="main-header__user" ref="userMenu">
         <span class="main-header__user-name">{{ user.user_name || user.user_id }}</span>
         <button
-          type="button"
-          class="main-header__avatar"
-          :aria-expanded="menuOpen ? 'true' : 'false'"
-          aria-haspopup="true"
-          :title="user.user_name || user.user_id"
-          @click="onUserMenu"
+            type="button"
+            class="main-header__avatar"
+            :aria-expanded="menuOpen ? 'true' : 'false'"
+            aria-haspopup="true"
+            :title="user.user_name || user.user_id"
+            @click="onUserMenu"
         >
           <span aria-hidden="true">{{ avatarLetter }}</span>
         </button>
@@ -36,11 +39,15 @@
 
 <script>
 import {clearUserSession, getUserSession} from '../login/authSession'
+import BrandMark from './BrandMark.vue'
 
 const REVIEW_STORAGE_KEY = 'medlens.review'
 
 export default {
   name: 'MainHeader',
+  components: {
+    BrandMark
+  },
   data() {
     return {
       user: getUserSession(),
@@ -102,11 +109,10 @@ export default {
 }
 
 .main-header__brand {
-  font-size: 22px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
   color: #1a2b4b;
   text-decoration: none;
-  letter-spacing: -0.02em;
   flex-shrink: 0;
 }
 
@@ -122,6 +128,7 @@ export default {
   font-weight: 500;
   color: #5a6a7e;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .main-header__link:hover,
@@ -207,13 +214,36 @@ export default {
   background: #eef2f7;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1100px) {
+  .main-header {
+    gap: 12px;
+  }
+
+  .main-header__nav {
+    gap: 14px;
+  }
+}
+
+@media (max-width: 860px) {
   .header_main {
     padding: 8px 14px;
   }
 
+  .main-header {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
   .main-header__nav {
-    gap: 16px;
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: 18px;
+    overflow-x: auto;
+  }
+
+  .main-header__user {
+    margin-left: auto;
   }
 
   .main-header__user-name {

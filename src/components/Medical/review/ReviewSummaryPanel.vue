@@ -14,12 +14,6 @@
         <strong>{{ coverageText }}</strong>
         <div class="bar"><span :style="{ width: (coveragePercent || 0) + '%' }"></span></div>
       </article>
-      <article class="stat-card">
-        <span class="stat-icon pink"><i class="fa fa-dot-circle-o"></i></span>
-        <p>ROI 정확도</p>
-        <strong>{{ accuracyLabel }}</strong>
-        <div class="bar"><span :style="{ width: (accuracyPercent || 0) + '%' }"></span></div>
-      </article>
     </div>
 
     <p v-if="germinomaTitle" class="germinoma-meta">{{ germinomaTitle }}</p>
@@ -215,16 +209,6 @@ export default {
       if (this.coveragePercent == null) return '—'
       return `${this.coveragePercent}%`
     },
-    accuracyLabel() {
-      if (this.grade.result === '정답') return '일치'
-      if (this.grade.result === '부분정답') return '부분 일치'
-      return '불일치'
-    },
-    accuracyPercent() {
-      const value = Number(this.grade.iou)
-      if (!Number.isFinite(value)) return null
-      return Math.round(Math.min(1, value) * 100)
-    },
     explanationLines() {
       const note = this.grade.learning_note
       if (!this.usingMock && note && (note.summary || note.case_summary || (note.appearance || []).length)) {
@@ -341,18 +325,19 @@ export default {
 
 <style scoped>
 .summary-col {
-  flex: 1;
   min-width: 0;
+  min-height: 0;
   overflow: auto;
-  padding: 16px;
+  padding: 14px;
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: 8px;
+  box-sizing: border-box;
 }
 h2 {
   margin: 0;
-  font-size: 18px;
-  color: #0f172a;
+  font-size: 15px;
+  color: #1e3a5f;
 }
 .slice-meta {
   margin: 6px 0 0;
@@ -367,7 +352,7 @@ h2 {
 }
 .stat-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin: 14px 0 8px;
 }
@@ -404,8 +389,13 @@ h2 {
 .stat-icon.orange {
   background: #f59e0b;
 }
-.stat-icon.pink {
-  background: #fb7185;
+@media (max-width: 860px) {
+  .summary-col {
+    width: 100%;
+    height: max-content;
+    min-height: max-content;
+    overflow: visible;
+  }
 }
 .bar {
   height: 6px;

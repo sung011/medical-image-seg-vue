@@ -2,7 +2,7 @@
   <header class="med-header">
     <div class="med-header__left">
       <router-link class="logo" to="/main">
-        <span class="logo-text">메디스캔노트</span>
+        <BrandMark size="sm"/>
       </router-link>
 
       <span class="divider" aria-hidden="true"/>
@@ -61,6 +61,7 @@
 
 <script>
 import {clearUserSession, getUserSession} from '../login/authSession'
+import BrandMark from '../main/BrandMark.vue'
 
 const REVIEW_STORAGE_KEY = 'medlens.review'
 
@@ -73,6 +74,9 @@ const REGION_LABELS = {
 
 export default {
   name: 'MedHeader',
+  components: {
+    BrandMark
+  },
   data() {
     return {
       user: getUserSession(),
@@ -213,13 +217,6 @@ export default {
 .logo-icon__cross::after {
   width: 20px;
   height: 2px;
-}
-
-.logo-text {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #1e3a5f;
 }
 
 .divider {

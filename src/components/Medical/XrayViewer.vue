@@ -20,6 +20,7 @@
               alt="Chest X-ray"
               draggable="false"
               @error="onImageError"
+              @load="$emit('image-load')"
           />
           <img
               v-if="overlaySrc"
@@ -29,12 +30,13 @@
               draggable="false"
           />
           <RoiLayer
-              v-if="viewMode !== 'pan'"
+              v-if="drawable && viewMode !== 'pan'"
               :rois="rois"
               :tool="tool"
               @add-roi="$emit('add-roi', $event)"
               @remove-roi="$emit('remove-roi', $event)"
           />
+          <slot name="marks" />
         </div>
       </div>
 
@@ -79,6 +81,7 @@
       </div>
       <p v-if="sliceLoading" class="slice-loading">슬라이스 불러오는 중…</p>
       <p v-if="imageError" class="image-error">이미지를 불러오지 못했습니다.</p>
+      <slot name="hud" />
     </div>
   </div>
 </template>
@@ -118,9 +121,13 @@ export default {
     sliceLoading: {
       type: Boolean,
       default: false
+    },
+    drawable: {
+      type: Boolean,
+      default: true
     }
   },
-  emits: ['add-roi', 'remove-roi', 'update:slice-index'],
+  emits: ['add-roi', 'remove-roi', 'update:slice-index', 'image-load'],
   data() {
     return {
       zoom: 1,
@@ -253,10 +260,10 @@ export default {
 
 <style scoped>
 .xray-wrap {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
-  /* gap: 8px; */
 }
 
 .viewport {

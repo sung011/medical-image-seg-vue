@@ -1,32 +1,34 @@
 <template>
   <PageFrame fill>
     <div class="review-page">
-      <div class="review-actions">
-        <button v-if="canRetry" type="button" class="btn ghost" @click="onRetrySubmit">다시 제출</button>
-        <button v-else type="button" class="btn ghost" @click="onNextProblem">다음 문제 가져오기</button>
-        <button type="button" class="btn primary" @click="onDone">풀이완료</button>
-      </div>
       <p v-if="loading" class="review-status">채점 이미지를 불러오는 중</p>
       <p v-else-if="loadError" class="review-status review-status--error">{{ loadError }}</p>
       <main v-else class="content">
-      <ReviewResultPanel
-        :image-src="imageSrc"
-        :overlay-src="overlaySrc"
-        :user-roi="userRoi"
-        :grade="grade"
-        :using-mock="usingMock"
-        :type="type"
-        :slice-index="sliceIndex"
-        :slice-total="sliceTotal"
-      />
-      <ReviewSummaryPanel
-        :grade="grade"
-        :using-mock="usingMock"
-        :type="type"
-        :slice-index="sliceIndex"
-        :slice-total="sliceTotal"
-      />
-    </main>
+        <ReviewResultPanel
+          :image-src="imageSrc"
+          :overlay-src="overlaySrc"
+          :user-roi="userRoi"
+          :grade="grade"
+          :using-mock="usingMock"
+          :type="type"
+          :slice-index="sliceIndex"
+          :slice-total="sliceTotal"
+        >
+          <template #actions>
+            <button v-if="canRetry" type="button" class="btn ghost" @click="onRetrySubmit">다시 제출</button>
+            <button v-else type="button" class="btn ghost" @click="onNextProblem">다음 문제 가져오기</button>
+            <button type="button" class="btn primary" @click="onDone">풀이완료</button>
+          </template>
+        </ReviewResultPanel>
+        <ReviewSummaryPanel
+          class="side-fill"
+          :grade="grade"
+          :using-mock="usingMock"
+          :type="type"
+          :slice-index="sliceIndex"
+          :slice-total="sliceTotal"
+        />
+      </main>
     </div>
   </PageFrame>
 </template>
@@ -171,7 +173,7 @@ export default {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #eef3f8;
+  background: #f1f5f9;
   text-align: left;
   overflow: hidden;
 }
@@ -182,15 +184,8 @@ export default {
 .review-status--error {
   color: #e11d48;
 }
-.review-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 16px 0;
-  flex-shrink: 0;
-}
 .btn {
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -201,17 +196,40 @@ export default {
   background: #fff;
   color: #334155;
 }
+.btn.ghost:hover {
+  background: #eef2f7;
+}
 .btn.primary {
   border: none;
   background: #14b8a6;
   color: #fff;
 }
+.btn.primary:hover {
+  background: #0d9488;
+}
 .content {
   flex: 1;
   min-height: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-rows: minmax(0, 1fr);
   gap: 16px;
-  padding: 16px;
+  padding: 12px 16px 16px;
   box-sizing: border-box;
+}
+.side-fill {
+  align-self: stretch;
+  height: 100%;
+  max-height: none;
+}
+@media (max-width: 860px) {
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    overflow: auto;
+  }
+  .side-fill {
+    height: auto;
+  }
 }
 </style>

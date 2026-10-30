@@ -1,12 +1,8 @@
 <template>
   <aside class="learning-sidebar">
-    <router-link class="learning-sidebar__brand" to="/main">
-      <span class="learning-sidebar__brand-mark">메</span>
-      <span class="learning-sidebar__brand-text">
-        <strong>메디스캔노트</strong>
-        <em>LEARNING</em>
-      </span>
-    </router-link>
+    <!--    <router-link class="learning-sidebar__brand" to="/main" aria-label="Mediscan Note">
+          <BrandMark size="sm"/>
+        </router-link>-->
 
     <nav class="learning-sidebar__nav" aria-label="학습 메뉴">
       <component
@@ -36,6 +32,7 @@
 
 <script>
 import {SIDEBAR_ITEMS} from './learningOptions'
+import BrandMark from '../main/BrandMark.vue'
 
 const ICON_SVG = {
   setup: '<svg viewBox="0 0 20 20" width="16" height="16" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M10 6v4l2.5 1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
@@ -48,6 +45,9 @@ const ICON_SVG = {
 
 export default {
   name: 'LearningSidebar',
+  components: {
+    BrandMark
+  },
   props: {
     activeId: {
       type: String,
@@ -88,43 +88,9 @@ export default {
 .learning-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
   margin-bottom: 28px;
   text-decoration: none;
   color: #1a2b4b;
-}
-
-.learning-sidebar__brand-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #2bb3a8;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.learning-sidebar__brand-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-}
-
-.learning-sidebar__brand-text strong {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.learning-sidebar__brand-text em {
-  margin-top: 2px;
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #7a8798;
 }
 
 .learning-sidebar__nav {

@@ -6,9 +6,9 @@
       v-model="query"
       type="search"
       class="search"
-      placeholder="용어 검색 (한/영)"
+      placeholder="증상 또는 용어"
     />
-    <div class="filters">
+    <div v-if="tags.length > 1" class="filters">
       <button
         v-for="tag in tags"
         :key="tag"
@@ -26,12 +26,12 @@
     <ul v-else class="term-list">
       <li v-for="term in filteredTerms" :key="term.id" class="term-card">
         <div class="term-title">
-          <strong>{{ term.en }}</strong>
-          <span>{{ term.ko }}</span>
+          <strong>{{ term.ko }} <span v-if="term.en">({{ term.en }})</span></strong>
         </div>
         <p>{{ term.desc }}</p>
-        <div class="chips">
-          <span v-for="c in term.categories" :key="c">{{ c }}</span>
+        <p v-if="term.descEn" class="desc-en">{{ term.descEn }}</p>
+        <div v-if="term.parts.length" class="chips">
+          <span v-for="part in term.parts" :key="part">{{ part }}</span>
         </div>
       </li>
     </ul>
@@ -39,26 +39,13 @@
 </template>
 
 <script>
-import { API_BASE } from '../../apiBase'
+import { searchGlossary } from '../glossary/glossaryModel'
 
-const GLOSSARY_API = `${API_BASE}/glossary`
+const PART_WORDS = ['뇌', '심장', '폐', '흉부', '복부', '무릎']
 
-function parsePgArray(value) {
-  if (!value || typeof value !== 'string') return []
-  const inner = value.replace(/^\{|\}$/g, '').trim()
-  if (!inner) return []
-  return inner.split(',').map((s) => s.trim()).filter(Boolean)
-}
-
-function mapItem(item) {
-  const categories = parsePgArray(item.tags_ko)
-  return {
-    id: item.id,
-    en: item.name_en || '',
-    ko: item.name_ko || '',
-    desc: item.definition_ko || '',
-    categories
-  }
+function partsIn(term) {
+  const text = `${term.ko} ${term.desc} ${term.descEn}`
+  return PART_WORDS.filter((word) => text.includes(word))
 }
 
 const REGION_LABELS = {
@@ -80,75 +67,71 @@ export default {
       error: '',
       region: '',
       type: '',
-      count: 0
+      searchTimer: null,
+      requestId: 0
     }
   },
   computed: {
     metaLabel() {
-      if (!this.region && !this.type) return ''
-      const parts = []
-      if (this.region) {
-        parts.push(REGION_LABELS[this.region] || this.region)
-      }
-      if (this.type) parts.push(this.type)
-      return `${parts.join(' · ')} · ${this.count}개`
+      const region = REGION_LABELS[this.region] || this.region
+      if (!region) return ''
+      const type = this.type ? ` · ${this.type}` : ''
+      return `${region}${type} · ${this.filteredTerms.length}개`
     },
     filteredTerms() {
-      const q = this.query.trim().toLowerCase()
-      const qRaw = this.query.trim()
-      return this.terms.filter((term) => {
-        const matchTag =
-          this.filter === '전체' || term.categories.includes(this.filter)
-        const matchQuery =
-          !q ||
-          term.en.toLowerCase().includes(q) ||
-          term.ko.includes(qRaw) ||
-          term.desc.includes(qRaw)
-        return matchTag && matchQuery
-      })
+      if (this.filter === '전체') return this.terms
+      return this.terms.filter((term) => term.parts.includes(this.filter))
     }
   },
   watch: {
     '$route.query': {
       immediate: true,
       handler() {
-        this.fetchGlossary()
+        clearTimeout(this.searchTimer)
+        this.fetchGlossary(false)
       }
+    },
+    query() {
+      clearTimeout(this.searchTimer)
+      this.searchTimer = setTimeout(() => this.fetchGlossary(true), 300)
     }
   },
+  beforeUnmount() {
+    clearTimeout(this.searchTimer)
+    this.requestId += 1
+  },
   methods: {
-    async fetchGlossary() {
+    async fetchGlossary(keepList) {
+      const requestId = ++this.requestId
       const region = this.$route.query.region || 'brain'
       const type = this.$route.query.type || 'CT'
       this.region = region
       this.type = type
-      this.loading = true
+      if (!keepList) this.loading = true
       this.error = ''
 
       try {
-        const url = `${GLOSSARY_API}?region=${encodeURIComponent(region)}&type=${encodeURIComponent(type)}`
-        const res = await fetch(url)
-        if (!res.ok) throw new Error(`API 오류 (${res.status})`)
-        const data = await res.json()
-        if (!data.ok) throw new Error('용어 사전을 불러오지 못했습니다.')
-
-        const terms = (data.items || []).map(mapItem)
-        const tagSet = new Set()
-        terms.forEach((t) => t.categories.forEach((c) => tagSet.add(c)))
-
-        this.terms = terms
-        this.count = data.count ?? terms.length
-        this.tags = ['전체', ...Array.from(tagSet).sort()]
-        if (!this.tags.includes(this.filter)) this.filter = '전체'
+        const q = this.query.trim()
+        const regionLabel = REGION_LABELS[region] || ''
+        const found = await searchGlossary(q, q ? '' : regionLabel)
+        if (requestId !== this.requestId) return
+        this.applyTerms(found.map((term) => ({ ...term, parts: partsIn(term) })))
       } catch (e) {
+        if (requestId !== this.requestId) return
         this.terms = []
-        this.count = 0
         this.tags = ['전체']
         this.filter = '전체'
         this.error = e.message || '용어 사전을 불러오지 못했습니다.'
       } finally {
-        this.loading = false
+        if (requestId === this.requestId) this.loading = false
       }
+    },
+    applyTerms(terms) {
+      const present = new Set()
+      terms.forEach((term) => term.parts.forEach((part) => present.add(part)))
+      this.terms = terms
+      this.tags = ['전체', ...PART_WORDS.filter((word) => present.has(word))]
+      if (!this.tags.includes(this.filter)) this.filter = '전체'
     }
   }
 }
@@ -156,8 +139,7 @@ export default {
 
 <style scoped>
 .dictionary {
-  width: 280px;
-  flex-shrink: 0;
+  min-width: 0;
   padding: 14px;
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -233,17 +215,22 @@ h3 {
   background: #f9fafb;
 }
 .term-title {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   margin-bottom: 6px;
   font-size: 13px;
+  color: #1e3a5f;
+}
+.term-title span {
+  font-weight: 600;
+  color: #64748b;
 }
 .term-card p {
   margin: 0 0 8px;
   font-size: 12px;
   line-height: 1.45;
   color: #4b5563;
+}
+.desc-en {
+  color: #64748b;
 }
 .chips {
   display: flex;

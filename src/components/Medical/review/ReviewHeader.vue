@@ -1,9 +1,8 @@
 <template>
   <header class="review-header">
     <div class="brand">
-      <span class="logo-mark" aria-hidden="true">+</span>
+      <BrandMark size="sm"/>
       <div class="brand-text">
-        <strong>메디스캔노트</strong>
         <span>SCORING AND EXPLANATION</span>
       </div>
     </div>
@@ -23,11 +22,15 @@
 
 <script>
 import { clearUserSession } from '../../login/authSession'
+import BrandMark from '../../main/BrandMark.vue'
 
 const REVIEW_STORAGE_KEY = 'medlens.review'
 
 export default {
   name: 'ReviewHeader',
+  components: {
+    BrandMark
+  },
   emits: ['next', 'done'],
   methods: {
     onLogout() {
@@ -56,27 +59,11 @@ export default {
   align-items: center;
   gap: 10px;
 }
-.logo-mark {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: #14b8a6;
-  color: #fff;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-}
 .brand-text {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   text-align: left;
-}
-.brand-text strong {
-  font-size: 16px;
-  color: #0f172a;
 }
 .brand-text span {
   font-size: 11px;

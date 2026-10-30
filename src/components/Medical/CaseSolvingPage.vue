@@ -15,7 +15,16 @@
               :submitting="submitting"
               @submit="onSubmit"
           />
-          <p v-if="problemLoading" class="panel-status">문제 불러오는 중…</p>
+          <div v-if="problemLoading" class="panel-status is-wait" role="status">
+            <div class="wait">
+              <span class="wait__mark" aria-hidden="true">
+                <span class="wait__spin"></span>
+                <span class="wait__cross"></span>
+              </span>
+              <p class="wait__title">로딩중</p>
+              <p v-if="slicePaths.length" class="wait__count">{{ sliceLoaded }} / {{ slicePaths.length }}</p>
+            </div>
+          </div>
           <p v-else-if="problemError" class="panel-status error">{{ problemError }}</p>
           <XrayViewer
               v-else
@@ -181,6 +190,8 @@ export default {
       shownSliceIndex: 0,
       sliceLoading: false,
       sliceLoadToken: 0,
+      fetchToken: 0,
+      sliceLoaded: 0,
       studyIdx: null,
       caseId: '-',
       caseSummary: '',
@@ -201,6 +212,7 @@ export default {
     this.sliceCache = new Map()
     this.sliceInflight = new Map()
     this.sliceAccessOrder = []
+    this.holdAllSlices = false
   },
   watch: {
     '$route.query': {
@@ -212,6 +224,7 @@ export default {
   },
   beforeUnmount() {
     this.sliceLoadToken += 1
+    this.fetchToken += 1
     this.clearSliceCache()
   },
   methods: {
@@ -230,11 +243,13 @@ export default {
       }
       if (this.sliceInflight) this.sliceInflight.clear()
       this.sliceAccessOrder = []
+      this.holdAllSlices = false
       this.imageObjectUrl = ''
       this.imageSrc = ''
       this.imageFile = null
     },
     trimSliceCache(keepIndex) {
+      if (this.holdAllSlices) return
       if (!this.sliceCache || this.sliceCache.size <= SLICE_CACHE_MAX) return
       const keep = new Set()
       const start = Math.max(0, keepIndex - PREFETCH_RADIUS)
@@ -271,7 +286,43 @@ export default {
       }
       return blob
     },
-    async ensureSliceEntry(path, index) {
+    async fetchStorageBlob(path) {
+      const res = await fetch(path)
+      if (!res.ok) {
+        throw new Error('저장소 이미지를 불러오지 못했습니다.')
+      }
+      const blob = await res.blob()
+      if (!blob || blob.size < 64) {
+        throw new Error('유효한 이미지가 아닙니다.')
+      }
+      return blob
+    },
+    async fetchSliceBlob(path, index, useStorage) {
+      if (useStorage && path && path.startsWith('/stylesheets/')) {
+        try {
+          return await this.fetchStorageBlob(path)
+        } catch (e) {
+          /* 저장소가 막히면 문제 API로 받는다 */
+        }
+      }
+      return this.fetchProblemSlice(index)
+    },
+    rememberSlice(path, blob) {
+      const cached = this.sliceCache.get(path)
+      if (cached) {
+        this.touchCacheKey(path)
+        return cached
+      }
+      const filename = filenameFromPath(path)
+      const type = blob.type || 'image/png'
+      const file = new File([blob], filename, {type})
+      const objectUrl = URL.createObjectURL(file)
+      const entry = {file, objectUrl}
+      this.sliceCache.set(path, entry)
+      this.touchCacheKey(path)
+      return entry
+    },
+    async ensureSliceEntry(path, index, useStorage = false) {
       const cached = this.sliceCache.get(path)
       if (cached) {
         this.touchCacheKey(path)
@@ -280,15 +331,9 @@ export default {
       const pending = this.sliceInflight.get(path)
       if (pending) return pending
 
-      const request = this.fetchProblemSlice(index)
+      const request = this.fetchSliceBlob(path, index, useStorage)
           .then((blob) => {
-            const filename = filenameFromPath(path)
-            const type = blob.type || 'image/png'
-            const file = new File([blob], filename, {type})
-            const objectUrl = URL.createObjectURL(file)
-            const entry = {file, objectUrl}
-            this.sliceCache.set(path, entry)
-            this.touchCacheKey(path)
+            const entry = this.rememberSlice(path, blob)
             this.sliceInflight.delete(path)
             return entry
           })
@@ -298,6 +343,44 @@ export default {
           })
       this.sliceInflight.set(path, request)
       return request
+    },
+    async preloadAllSlices(token) {
+      const total = this.slicePaths.length
+      const firstPath = this.slicePaths[0]
+      let useStorage = false
+      if (firstPath && firstPath.startsWith('/stylesheets/')) {
+        try {
+          const blob = await this.fetchStorageBlob(firstPath)
+          if (token !== this.fetchToken) return
+          this.rememberSlice(firstPath, blob)
+          useStorage = true
+        } catch (e) {
+          useStorage = false
+        }
+      }
+      if (useStorage && token === this.fetchToken) this.sliceLoaded = 1
+      let next = useStorage ? 1 : 0
+      const run = async () => {
+        while (next < total) {
+          if (token !== this.fetchToken) return
+          const index = next
+          next += 1
+          const path = this.slicePaths[index]
+          if (!path) continue
+          await this.ensureSliceEntry(path, index, useStorage)
+          if (token === this.fetchToken) this.sliceLoaded += 1
+        }
+      }
+      const remain = Math.max(total - next, 0)
+      const width = useStorage ? remain : Math.min(6, remain)
+      if (width > 0) {
+        await Promise.all(Array.from({length: width}, () => run()))
+      }
+      if (token !== this.fetchToken) return
+      const missing = this.slicePaths.some((path) => path && !this.sliceCache.has(path))
+      if (missing) {
+        throw new Error('영상을 모두 불러오지 못했습니다.')
+      }
     },
     prefetchAround(index) {
       if (this.slicePaths.length <= 1) return
@@ -329,7 +412,7 @@ export default {
         this.shownSliceIndex = index
         if (clearRois) this.rois = []
         this.trimSliceCache(index)
-        this.prefetchAround(index)
+        if (!this.holdAllSlices) this.prefetchAround(index)
       } finally {
         if (token === this.sliceLoadToken) {
           this.sliceLoading = false
@@ -403,14 +486,18 @@ export default {
       this.rois = []
       this.problemImagePath = ''
       this.slicePaths = []
+      this.sliceLoaded = 0
       this.sliceIndex = 0
       this.shownSliceIndex = 0
       this.studyIdx = null
       this.sliceLoadToken += 1
+      this.fetchToken += 1
+      const token = this.fetchToken
       this.clearSliceCache()
 
       try {
         const problem = await this.loadProblem(stPart, stModal)
+        if (token !== this.fetchToken) return
         const paths = normalizeStImages(problem.st_image, isMri)
         if (!paths.length) {
           throw new Error('영상 경로가 없습니다.')
@@ -420,6 +507,9 @@ export default {
           throw new Error('문제 번호가 없습니다.')
         }
         this.slicePaths = paths
+        await this.preloadAllSlices(token)
+        if (token !== this.fetchToken) return
+        if (isMri) this.holdAllSlices = true
         await this.applySlice(0, {clearRois: true})
         this.caseId = String(problem.idx ?? '-').padStart(2, '0')
         const sliceNote = isMri ? ` · 슬라이스 ${paths.length}장` : ''
@@ -436,7 +526,9 @@ export default {
         this.caseSummary = ''
         this.problemError = e.message || '문제를 불러오지 못했습니다.'
       } finally {
-        this.problemLoading = false
+        if (token === this.fetchToken) {
+          this.problemLoading = false
+        }
       }
     },
     addRoi(roi) {
@@ -636,14 +728,15 @@ export default {
 .content {
   flex: 1;
   min-height: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-rows: minmax(0, 1fr);
   gap: 16px;
   padding: 12px 16px 16px;
   box-sizing: border-box;
 }
 
 .viewer-col {
-  flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -687,6 +780,93 @@ export default {
   font-size: 13px;
   color: #64748b;
   background: #0b1220;
+}
+
+.panel-status.is-wait {
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 42%, rgba(47, 111, 237, 0.22), transparent 62%),
+    #0b1220;
+}
+
+.wait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.wait__mark {
+  position: relative;
+  width: 58px;
+  height: 58px;
+}
+
+.wait__spin {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: conic-gradient(from 20deg, rgba(255, 255, 255, 0.08), #2f6fed 45%, #7ed4cf 72%, rgba(255, 255, 255, 0.08) 88%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  animation: wait-spin 1s linear infinite;
+}
+
+.wait__cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+}
+
+.wait__cross::before,
+.wait__cross::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #fff;
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+}
+
+.wait__cross::before {
+  width: 2px;
+  height: 16px;
+}
+
+.wait__cross::after {
+  width: 16px;
+  height: 2px;
+}
+
+.wait__title {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.wait__count {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes wait-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait__spin {
+    animation: none;
+  }
 }
 
 .panel-status.error {

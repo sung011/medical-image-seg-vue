@@ -8,8 +8,8 @@
 - [x] 안내 알림은 브라우저 `alert` 대신 SweetAlert2다. 호출은 `src/notify.js`의 `showMessage`만 사용한다
 - [x] `/` 는 세션이 있으면 `/main`, 없으면 `/login`
 - [x] 로그아웃은 `medlens_user`와 `medlens.review`를 지우고 `/login`으로 간다
-- [x] `/medical`, `/medical/review`, `/main`, `/learning`, `/note`, `/history` 는 세션이 없으면 `/login`으로 보낸다
-- [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. 메디스캔노트, 학습, 오답노트, 화면 분석, 마이페이지, 문의하기, 이름·로그아웃이 같다. "화면 분석"은 `/analyze`로 이동한다
+- [x] `/medical`, `/medical/review`, `/main`, `/learning`, `/note`, `/history`, `/glossary` 는 세션이 없으면 `/login`으로 보낸다
+- [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`, `/glossary`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. 로고 Mediscan Note, 학습, 용어 사전, 오답노트, 화면 분석, 마이페이지, 문의하기, 이름·로그아웃이 같다. 로고는 `src/components/main/BrandMark.vue`다. 흰 배경에서는 Medi가 남색, scan이 파랑, Note가 청록이고, 로그인·가입의 어두운 배경에서는 흰 글씨에 scan만 청록이다. 로고를 누르면 `/main`으로 간다. "화면 분석"은 `/analyze`로, "용어 사전"은 `/glossary`로 이동한다
 - [x] 헤더 "문의하기"는 그 페이지에서 채팅 창을 연다
 - [x] 풀이 화면의 "가이드"는 케이스 정보 줄에 있고, 원/박스 드래그, 제출, 리뷰 순서를 패널로 보여 준다
 
@@ -17,7 +17,7 @@
 
 - [x] 세션 이름으로 "안녕하세요, {이름}님"을 보여 준다
 - [x] "학습하기"와 "학습 시작"은 `/learning`으로 이동한다
-- [x] 헤더에 메디스캔노트, 학습, 오답노트, 화면 분석, 마이페이지, 사용자 메뉴(로그아웃)를 보여 준다. "화면 분석"은 `/analyze`로 이동한다
+- [x] 헤더에 Mediscan Note, 학습, 용어 사전, 오답노트, 화면 분석, 마이페이지, 사용자 메뉴(로그아웃)를 보여 준다. 로고를 누르면 `/main`으로 간다. "용어 사전"은 `/glossary`로, "화면 분석"은 `/analyze`로 이동한다
 - [x] 오늘의 학습 현황은 세션 `idx`로 `GET /learning/today?user_idx=`를 호출해 오늘 제출이 있는 부위만 학습 시간·학습 문제·정답률로 보여 준다
 - [x] 부위마다 학습 시간·학습 문제·정답률을 보여 준다
 - [x] 헤더 "오답노트"와 홈의 오답노트 카드는 `/note`로 이동한다
@@ -68,17 +68,25 @@
 - [x] `GET /learning/problems?st_part=&st_modal=&user_idx=`로 그 부위·영상의 문제 목록과 풀었는지를 받고, 아직 안 푼 첫 문제를 `GET /learning/problem/{번호}`로 연다. 주소에 `idx`가 있으면 목록을 거치지 않고 그 번호만 연다. 정답 병명은 응답에 없다
 - [x] 영상 바이트는 `GET /learning/problem/{번호}/image`로 받는다. MRI는 `?slice_index=`(0부터)를 붙인다. CT 등은 0번 한 장이다
 - [x] `type=MRI` 이고 `st_image`가 경로 배열이면 슬라이더·휠로 슬라이스를 넘긴다. CT 등은 한 장만 쓴다
-- [x] MRI 슬라이스는 받은 장을 캐시하고 근처 장을 미리 받아 스크롤을 부드럽게 한다
+- [x] `type=MRI`로 풀이 화면에 들어오면 그 문제의 슬라이스 이미지를 모두 받은 뒤에 뷰어를 연다. CT·X-ray도 같은 로딩 화면을 쓰고, 쓰는 한 장을 받은 뒤에 뷰어를 연다. 경로는 `/stylesheets`이면 그 파일을 한꺼번에 받고, 막히면 `GET /learning/problem/{번호}/image?slice_index=`로 최대 6장씩 받는다. 다 받기 전에는 돌아가는 표시와 "로딩중", 받은 장 수(예: MRI 3 / 13, CT·X-ray 0 / 1)를 보여 준다. 일정 시간으로 끄지 않는다. 받은 장은 그 문제를 보는 동안 캐시에 둔다
 - [x] ROI 도구: 원, 박스, 지우기. 드래그로 영역을 추가한다
 - [x] 제출 판독은 부위와 영상 종류로 고른다. 뇌 CT와 흉부 X-ray는 `POST /learning/roi-grade`(흉부는 서버가 흉부 모델로 채점), 뇌 MRI는 `POST /api/v1/analyze/brain-mri`, 무릎 MRI는 박스로 `POST /learning/roi-grade/knee`다. 무릎은 이미지 파일을 보내지 않고 `study_idx`, `roi_type=box`, `x`, `y`, `width`, `height`, `slice_index`(0부터), 로그인한 회원 `user_idx`(세션이 없으면 1)만 보낸다. `result`가 정답·부분정답·오답이면 그 값을 그대로 쓰고, `iou`는 정확도, `recall`은 포함률, `reference_bbox`는 정답 박스다. `reading`이 없을 때만 미채점 문구를 쓴다. 복부 등 모델이 없는 조합은 뇌 API를 호출하지 않고 안내만 한다. 여러 ROI면 마지막 영역으로 채점한다
 - [x] MRI 제출은 `slice_index`(0-based)와 `image_path`를 함께 보내고, CT는 기존처럼 생략한다
 - [x] 채점 결과와 사용자 ROI·슬라이스 정보를 `medlens.review`에 저장하고 `/medical/review`로 이동한다
-- [x] 오른쪽 용어 사전은 `GET /glossary` 결과를 보여 준다
+- [x] 오른쪽 용어 사전은 `GET /glossary/search`만 쓴다. 검색어가 없으면 주소 부위의 한글 이름을 `q`에 넣고, 검색어가 있으면 그 글자만 `q`에 넣는다. 이름·설명에 나온 뇌·심장·폐·흉부·복부·무릎으로 거른다. 항목은 한글 이름 옆 괄호에 영어 이름, 한글 설명 아래에 영어 설명, 아래에 그 부위 표시를 둔다. 오른쪽 칸은 300px에서 360px이고, 영상은 남은 가로를 쓴다
 - [x] ROI가 하나도 없으면 제출하지 않고 SweetAlert2로 "ROI를 하나 이상 지정해 주세요."를 보여 준다
+
+## 의학용어 사전 `/glossary`
+
+- [x] 헤더 "용어 사전"은 `/glossary`로 간다. 위쪽에서 세 칸, 목록과 본문, 카드 화면을 바꾼다. 주소 `view`는 `columns`, `reading`, `cards`다
+- [x] 용어 목록은 `GET /glossary/search`로 받는다. 검색어가 있으면 `GET /glossary/search?q=`로 다시 받는다. 부위를 고르면 그 한글 이름도 `q`에 넣어 같은 주소로 다시 받는다. 둘 다 있으면 한 칸을 띄워 함께 보낸다. 전체는 `q`에서 부위 이름을 뺀다. 풀이 화면 오른쪽 사전도 `GET /glossary/search`만 쓴다. 검색어가 없으면 부위 한글 이름을 `q`에 넣고, 있으면 검색어만 넣는다
+- [x] 검색 종류는 전체·용어·증상이다. 전체는 서버 결과를 그대로 보여주고, 용어는 그 결과의 한글·영어 이름만, 증상은 한글·영어 설명만 남긴다. 항목은 한글 이름 옆에 영어 이름을 괄호로 붙이고, 한글 설명 아래에 영어 설명(`definition_en`)을 둔다. 세 칸은 왼쪽에서 부위만 고르고, 가운데 목록, 오른쪽 설명이다. 목록과 본문은 왼쪽 짧은 목록과 오른쪽 본문이다. 카드는 왼쪽 검색 칸과 오른쪽 격자이고, 고르면 오른쪽 아래 설명이 겹친다
+- [x] 관련 용어는 같은 분류 태그를 가진 다른 항목이다. 사전 화면에는 학습 화면으로 가는 버튼이 없다
 
 ## 채점 리뷰 `/medical/review`
 
-- [x] 저장된 영상, 사용자 ROI, 오버레이, 판정(정답/부분정답/오답, 뇌 MRI는 판독)을 보여 준다. 무릎 MRI의 정답·부분정답·오답 배지와 문구는 뇌 CT와 같다. `reference_bbox`가 있으면 정답 박스로 그린다
+- [x] 저장된 영상, 사용자 ROI, 오버레이, 판정(정답/부분정답/오답, 뇌 MRI는 판독)을 보여 준다. 화면은 풀이 화면과 같이 위 정보 줄, 왼쪽 영상, 오른쪽 요약이다. 오른쪽 칸은 300px에서 360px이고 영상은 남은 가로를 쓴다. 좁은 화면에서는 영상 아래에 요약이 이어진다. 리뷰 영상은 풀이와 같이 확대, 축소, 기본크기, 팬, 밝기, 리셋을 쓴다. 정보 줄에 판정과 "다음 문제 가져오기" 또는 "다시 제출", "풀이완료"를 둔다. 무릎 MRI의 정답·부분정답·오답 배지와 문구는 뇌 CT와 같다. `reference_bbox`가 있으면 정답 박스로 그린다
+- [x] 결과 요약은 추정 병명과 포함률만 보여 준다. ROI 정확도 칸은 없다. `iou`는 저장만 하고 이 화면에 그리지 않는다
 - [x] MRI면 제출한 슬라이스 번호(예: 슬라이스 43 / 190)를 결과·요약에 보여 준다
 - [x] 결과 요약의 소견 제목은 채점 `classification.task`를 따른다. `hemorrhage`는 출혈(ICH)과 germinoma, `thorax`는 흉부 소견, `brain-mri`는 뇌 MRI, `knee`와 `knee-mri`는 무릎 MRI다. `knee-mri`는 `label_ko`, `verdict`, `prob`를 목록으로 보여주고, `status`가 `not_evaluated`이면 점수 대신 `reason`을 보여 준다. 무릎의 정답·부분정답·오답 문구는 뇌 CT와 같다
 - [x] 제출은 `review_node`에 포함률(`rn_recall`), ROI 정확도(`rn_iou`), 위치 요약(`rn_overlay_summary`), 출혈·germinoma 소견(`rn_findings`), MRI 슬라이스(`rn_slice_index`)를 남긴다

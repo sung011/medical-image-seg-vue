@@ -3,15 +3,22 @@
     <div class="login-brand__glow" aria-hidden="true"/>
     <div class="login-brand__grid" aria-hidden="true"/>
     <div class="login-brand__content">
-      <h1 class="login-brand__logo">메디스캔노트</h1>
+      <h1 class="login-brand__logo">
+        <BrandMark size="lg" tone="light"/>
+      </h1>
       <p class="login-brand__tagline">의료영상 판독 학습</p>
     </div>
   </aside>
 </template>
 
 <script>
+import BrandMark from '../main/BrandMark.vue'
+
 export default {
-  name: 'LoginBrandPanel'
+  name: 'LoginBrandPanel',
+  components: {
+    BrandMark
+  }
 }
 </script>
 
@@ -60,18 +67,8 @@ export default {
 
 .login-brand__logo {
   margin: 0;
-  font-size: clamp(40px, 5vw, 56px);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.login-brand__logo-med {
-  color: #fff;
-}
-
-.login-brand__logo-lens {
-  color: #5ab2b2;
+  line-height: 1;
 }
 
 .login-brand__tagline {

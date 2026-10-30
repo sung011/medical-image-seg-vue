@@ -1,65 +1,74 @@
 <template>
-  <section class="result-col">
-    <div class="result-head">
-      <h2>결과</h2>
-      <span class="badge" :class="resultClass">{{ resultLabel }}</span>
-      <span v-if="sliceLabel" class="slice-badge">{{ sliceLabel }}</span>
+  <section class="viewer-col">
+    <div class="case-info">
+      <div class="result-head">
+        <span class="case-id">결과</span>
+        <span class="badge" :class="resultClass">{{ resultLabel }}</span>
+        <span v-if="sliceLabel" class="slice-badge">{{ sliceLabel }}</span>
+      </div>
+      <div class="case-actions">
+        <slot name="actions" />
+      </div>
     </div>
-    <p class="feedback">{{ feedbackText }}</p>
-    <ul v-if="kneeFindings.length" class="finding-list">
-      <li v-for="item in kneeFindings" :key="'knee-' + (item.label || item.label_ko)">
-        {{ findingLine(item) }}
-      </li>
-    </ul>
-    <p v-if="kneeDisclaimer" class="disclaimer">{{ kneeDisclaimer }}</p>
 
-    <div ref="frame" class="image-panel">
-      <img
-        v-if="imageSrc"
-        ref="xray"
-        class="xray"
-        :src="imageSrc"
-        alt="판독 영상"
-        @load="updateLayout"
-      />
-      <img
-        v-if="overlaySrc"
-        class="overlay"
-        :src="overlaySrc"
-        alt="정답 병변"
-      />
-      <div
-        v-if="answerShape && !overlaySrc"
-        class="shape answer"
-        :class="answerShape.type"
-        :style="shapeStyle(answerShape)"
-      />
-      <div
-        v-if="userRoi"
-        class="shape user"
-        :class="userRoi.type"
-        :style="shapeStyle(userRoi)"
-      />
-      <span class="orient">R</span>
-      <ul class="legend">
-        <li>
-          <span class="swatch user"></span>
-          사용자 선택 영역
-        </li>
-        <li>
-          <span class="swatch answer"></span>
-          정답 병변
+    <div class="viewer-panel">
+      <XrayViewer
+          v-if="imageSrc"
+          ref="viewer"
+          class="xray-fill"
+          :image-src="imageSrc"
+          :overlay-src="overlaySrc"
+          :drawable="false"
+          :rois="[]"
+          @image-load="updateLayout"
+      >
+        <template #marks>
+          <div
+              v-if="answerShape && !overlaySrc"
+              class="shape answer"
+              :class="answerShape.type"
+              :style="shapeStyle(answerShape)"
+          />
+          <div
+              v-if="userRoi"
+              class="shape user"
+              :class="userRoi.type"
+              :style="shapeStyle(userRoi)"
+          />
+        </template>
+        <template #hud>
+          <ul class="legend">
+            <li>
+              <span class="swatch user"></span>
+              사용자 선택 영역
+            </li>
+            <li>
+              <span class="swatch answer"></span>
+              정답 병변
+            </li>
+          </ul>
+        </template>
+      </XrayViewer>
+      <div class="footer-hint">
+      <p class="feedback">{{ feedbackText }}</p>
+      <ul v-if="kneeFindings.length" class="finding-list">
+        <li v-for="item in kneeFindings" :key="'knee-' + (item.label || item.label_ko)">
+          {{ findingLine(item) }}
         </li>
       </ul>
+      <p v-if="kneeDisclaimer" class="disclaimer">{{ kneeDisclaimer }}</p>
+    </div>
     </div>
   </section>
 </template>
 
 <script>
+import XrayViewer from '../XrayViewer.vue'
 import { containLayout, formatResult, resultClass as gradeResultClass } from './reviewModel'
 
 export default {
   name: 'ReviewResultPanel',
+  components: { XrayViewer },
   props: {
     imageSrc: {
       type: String,
@@ -169,16 +178,14 @@ export default {
   },
   methods: {
     updateLayout() {
-      const frame = this.$refs.frame
-      if (!frame || !frame.clientWidth) return
-      const img = this.$refs.xray
-      const naturalW = img && img.naturalWidth ? img.naturalWidth : frame.clientWidth
-      const naturalH = img && img.naturalHeight ? img.naturalHeight : frame.clientHeight
+      const viewer = this.$refs.viewer
+      const frame = viewer && viewer.getImageLayout()
+      if (!frame) return
       this.layout = containLayout(
-        naturalW,
-        naturalH,
-        frame.clientWidth,
-        frame.clientHeight
+        frame.naturalWidth,
+        frame.naturalHeight,
+        frame.frameWidth,
+        frame.frameHeight
       )
     },
     findingLine(item) {
@@ -204,25 +211,50 @@ export default {
 </script>
 
 <style scoped>
-.result-col {
-  flex: 1.05;
+.viewer-col {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  padding: 16px 16px 12px;
+  gap: 10px;
+}
+.case-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  padding: 14px 16px;
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: 8px;
 }
-h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #0f172a;
+.case-id {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a5f;
+}
+.case-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.viewer-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
 }
 .result-head {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 .badge {
   padding: 4px 10px;
@@ -247,14 +279,14 @@ h2 {
   color: #1d4ed8;
 }
 .finding-list {
-  margin: 0 0 12px;
+  margin: 8px 0 0;
   padding-left: 18px;
   font-size: 13px;
   line-height: 1.6;
   color: #0f172a;
 }
 .disclaimer {
-  margin: 0 0 12px;
+  margin: 8px 0 0;
   font-size: 12px;
   color: #64748b;
 }
@@ -266,31 +298,32 @@ h2 {
   background: #e0f2fe;
   color: #075985;
 }
+.footer-hint {
+  margin: 0;
+  padding: 10px 12px;
+  flex-shrink: 0;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+}
 .feedback {
-  margin: 8px 0 12px;
-  font-size: 13px;
+  margin: 0;
+  font-size: 12px;
   line-height: 1.5;
   color: #64748b;
 }
-.image-panel {
-  position: relative;
+.xray-fill {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-  background: #0b1220;
-  border-radius: 10px;
+  position: relative;
 }
-.xray,
-.overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
-}
-.overlay {
-  z-index: 1;
+@media (max-width: 860px) {
+  .viewer-col {
+    min-height: 520px;
+  }
+  .case-info,
+  .case-actions {
+    flex-wrap: wrap;
+  }
 }
 .shape {
   position: absolute;
@@ -306,20 +339,11 @@ h2 {
   border: 2px solid #14b8a6;
   background: rgba(20, 184, 166, 0.45);
 }
-.orient {
-  position: absolute;
-  top: 12px;
-  left: 14px;
-  z-index: 3;
-  color: #fff;
-  font-weight: 700;
-  font-size: 18px;
-}
 .legend {
   position: absolute;
-  left: 12px;
+  right: 12px;
   bottom: 12px;
-  z-index: 3;
+  z-index: 4;
   margin: 0;
   padding: 8px 10px;
   list-style: none;
