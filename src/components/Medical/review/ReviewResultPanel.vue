@@ -116,7 +116,6 @@ export default {
       return gradeResultClass(this.grade.result)
     },
     sliceLabel() {
-      if (String(this.type).toUpperCase() !== 'MRI') return ''
       if (this.sliceIndex == null || !Number.isFinite(this.sliceIndex)) return ''
       const current = this.sliceIndex + 1
       if (this.sliceTotal != null && this.sliceTotal > 0) {

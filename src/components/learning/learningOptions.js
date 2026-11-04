@@ -30,7 +30,7 @@ export const MODALITIES = [
 export const REGION_MODALITIES = {
     brain: ['CT', 'MRI'],
     chest: ['x-ray'],
-    abdomen: ['CT', 'MRI'],
+    abdomen: ['CT'],
     knee: ['MRI']
 }
 

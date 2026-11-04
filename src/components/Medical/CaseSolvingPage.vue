@@ -42,7 +42,7 @@
           />
           <p class="footer-hint">
             ⓘ 원본 의료 영상 파일과 ROI 좌표를 그대로 제출합니다. 여러 개를 그리면 마지막 ROI로 채점합니다.
-            <template v-if="isMri && slicePaths.length > 1"> MRI는 슬라이더·마우스 휠로 슬라이스를 바꾼 뒤, 보이는 장으로 제출합니다.</template>
+            <template v-if="hasMultiSlices"> 여러 장이면 슬라이더·마우스 휠로 슬라이스를 바꾼 뒤, 보이는 장으로 제출합니다.</template>
           </p>
         </div>
       </section>
@@ -88,41 +88,34 @@ function filenameFromPath(path) {
   return name || 'upload.png'
 }
 
-/** MRI만 경로 배열을 쓰고, 그 외는 단일 경로 한 장으로 맞춘다. */
-function normalizeStImages(stImage, isMri) {
-  const asList = (value) => {
-    if (Array.isArray(value)) {
-      return value.map((item) => imagePath(item)).filter(Boolean)
-    }
-    if (typeof value !== 'string') return []
-    const trimmed = value.trim()
-    if (!trimmed) return []
-    if (trimmed.startsWith('[')) {
-      try {
-        const parsed = JSON.parse(trimmed)
-        if (Array.isArray(parsed)) {
-          return parsed.map((item) => imagePath(item)).filter(Boolean)
-        }
-      } catch (_) {
-        /* 단일 경로로 처리 */
-      }
-    }
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-      const inner = trimmed.slice(1, -1).trim()
-      if (!inner) return []
-      return inner
-          .split(',')
-          .map((part) => imagePath(part.trim().replace(/^"|"$/g, '')))
-          .filter(Boolean)
-    }
-    const one = imagePath(trimmed)
-    return one ? [one] : []
+/** st_image가 경로 배열이면 여러 장으로 쓰고, 한 개면 한 장만 쓴다. */
+function normalizeStImages(stImage) {
+  if (Array.isArray(stImage)) {
+    return stImage.map((item) => imagePath(item)).filter(Boolean)
   }
-
-  const paths = asList(stImage)
-  if (!paths.length) return []
-  if (isMri) return paths
-  return [paths[0]]
+  if (typeof stImage !== 'string') return []
+  const trimmed = stImage.trim()
+  if (!trimmed) return []
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => imagePath(item)).filter(Boolean)
+      }
+    } catch (_) {
+      /* 단일 경로로 처리 */
+    }
+  }
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    const inner = trimmed.slice(1, -1).trim()
+    if (!inner) return []
+    return inner
+        .split(',')
+        .map((part) => imagePath(part.trim().replace(/^"|"$/g, '')))
+        .filter(Boolean)
+  }
+  const one = imagePath(trimmed)
+  return one ? [one] : []
 }
 
 function clamp01(n) {
@@ -201,11 +194,11 @@ export default {
     }
   },
   computed: {
-    isMri() {
-      return String(this.$route.query.type || '').toUpperCase() === 'MRI'
+    hasMultiSlices() {
+      return this.slicePaths.length > 1
     },
     sliceTotal() {
-      return this.slicePaths.length > 1 ? this.slicePaths.length : 0
+      return this.hasMultiSlices ? this.slicePaths.length : 0
     }
   },
   created() {
@@ -480,7 +473,6 @@ export default {
     async fetchProblem() {
       const stPart = this.$route.query.region || 'brain'
       const stModal = this.$route.query.type || 'CT'
-      const isMri = String(stModal).toUpperCase() === 'MRI'
       this.problemLoading = true
       this.problemError = ''
       this.rois = []
@@ -498,7 +490,7 @@ export default {
       try {
         const problem = await this.loadProblem(stPart, stModal)
         if (token !== this.fetchToken) return
-        const paths = normalizeStImages(problem.st_image, isMri)
+        const paths = normalizeStImages(problem.st_image)
         if (!paths.length) {
           throw new Error('영상 경로가 없습니다.')
         }
@@ -509,10 +501,10 @@ export default {
         this.slicePaths = paths
         await this.preloadAllSlices(token)
         if (token !== this.fetchToken) return
-        if (isMri) this.holdAllSlices = true
+        if (paths.length > 1) this.holdAllSlices = true
         await this.applySlice(0, {clearRois: true})
         this.caseId = String(problem.idx ?? '-').padStart(2, '0')
-        const sliceNote = isMri ? ` · 슬라이스 ${paths.length}장` : ''
+        const sliceNote = paths.length > 1 ? ` · 슬라이스 ${paths.length}장` : ''
         this.caseSummary =
             `${stPart.toUpperCase()} · ${stModal} 영상 판독 학습 문제입니다.${sliceNote}`
       } catch (e) {
@@ -566,7 +558,7 @@ export default {
       const {layoutInfo, box} = this.getNormalizedRoi(roi)
       const region = this.$route.query.region || 'brain'
       const type = this.$route.query.type || 'CT'
-      const isMri = String(type).toUpperCase() === 'MRI'
+      const multiSlice = this.hasMultiSlices
       const form = new FormData()
       form.append('image', this.imageFile, this.imageFile.name)
       form.append('normalized', 'true')
@@ -578,7 +570,7 @@ export default {
       }
       form.append('st_part', String(region))
       form.append('st_modal', String(type))
-      if (isMri) {
+      if (multiSlice) {
         form.append('slice_index', String(this.shownSliceIndex))
         if (this.problemImagePath) {
           form.append('image_path', this.problemImagePath)
@@ -599,7 +591,7 @@ export default {
         form.append('cx', String(cx))
         form.append('cy', String(cy))
         form.append('radius', String(radius))
-        return {form, box, region, type, isMri}
+        return {form, box, region, type, multiSlice}
       }
 
       form.append('roi_type', 'box')
@@ -607,7 +599,7 @@ export default {
       form.append('y', String(box.y))
       form.append('width', String(box.width))
       form.append('height', String(box.height))
-      return {form, box, region, type, isMri}
+      return {form, box, region, type, multiSlice}
     },
     async requestReading(kind, form, box) {
       if (kind === 'brain-mri') {
@@ -670,9 +662,9 @@ export default {
       this.submitting = true
 
       try {
-        const {form, box, isMri} = this.buildRoiPayload(roi)
-        if (isMri && kind !== 'brain-mri' && !this.problemImagePath) {
-          throw new Error('제출할 MRI 슬라이스 경로가 없습니다.')
+        const {form, box, multiSlice} = this.buildRoiPayload(roi)
+        if (multiSlice && kind !== 'brain-mri' && !this.problemImagePath) {
+          throw new Error('제출할 슬라이스 경로가 없습니다.')
         }
         const data = await this.requestReading(kind, form, box, roi)
         if (!data) return
@@ -686,8 +678,8 @@ export default {
           type,
           imagePath: this.problemImagePath,
           overlayPath,
-          sliceIndex: isMri ? this.shownSliceIndex : null,
-          sliceTotal: isMri ? this.slicePaths.length : null,
+          sliceIndex: multiSlice ? this.shownSliceIndex : null,
+          sliceTotal: multiSlice ? this.slicePaths.length : null,
           userRoi: {type: roi.type, ...box},
           gradeResult: {...data, overlay_png_base64: overlayPath ? null : data.overlay_png_base64}
         }

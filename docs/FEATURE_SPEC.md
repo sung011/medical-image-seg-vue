@@ -31,7 +31,7 @@
 ## 학습 설정 `/learning`
 
 - [x] 부위(뇌·흉부·복부·무릎)를 하나만 고른다
-- [x] 영상 종류는 부위에 맞는 것만 보여 준다 (뇌·복부: CT·MRI, 흉부: X-ray만, 무릎: MRI만)
+- [x] 영상 종류는 부위에 맞는 것만 보여 준다 (뇌: CT·MRI, 복부: CT만, 흉부: X-ray만, 무릎: MRI만)
 - [x] 영상 종류를 하나만 고른다
 - [x] 처음에는 부위·영상 종류가 선택되지 않고 "학습 시작"은 꺼져 있다
 - [x] 부위와 영상 종류가 모두 있으면 "학습 시작"이 켜진다
@@ -66,12 +66,12 @@
 ## 문제 풀이 `/medical`
 
 - [x] `GET /learning/problems?st_part=&st_modal=&user_idx=`로 그 부위·영상의 문제 목록과 풀었는지를 받고, 아직 안 푼 첫 문제를 `GET /learning/problem/{번호}`로 연다. 주소에 `idx`가 있으면 목록을 거치지 않고 그 번호만 연다. 정답 병명은 응답에 없다
-- [x] 영상 바이트는 `GET /learning/problem/{번호}/image`로 받는다. MRI는 `?slice_index=`(0부터)를 붙인다. CT 등은 0번 한 장이다
-- [x] `type=MRI` 이고 `st_image`가 경로 배열이면 슬라이더·휠로 슬라이스를 넘긴다. CT 등은 한 장만 쓴다
-- [x] `type=MRI`로 풀이 화면에 들어오면 그 문제의 슬라이스 이미지를 모두 받은 뒤에 뷰어를 연다. CT·X-ray도 같은 로딩 화면을 쓰고, 쓰는 한 장을 받은 뒤에 뷰어를 연다. 경로는 `/stylesheets`이면 그 파일을 한꺼번에 받고, 막히면 `GET /learning/problem/{번호}/image?slice_index=`로 최대 6장씩 받는다. 다 받기 전에는 돌아가는 표시와 "로딩중", 받은 장 수(예: MRI 3 / 13, CT·X-ray 0 / 1)를 보여 준다. 일정 시간으로 끄지 않는다. 받은 장은 그 문제를 보는 동안 캐시에 둔다
+- [x] 영상 바이트는 `GET /learning/problem/{번호}/image`로 받는다. 여러 장이면 `?slice_index=`(0부터)를 붙인다. 한 장이면 0번이다
+- [x] `st_image`가 경로 배열(여러 장)이면 MRI·CT 모두 슬라이더·휠로 슬라이스를 넘긴다. 한 장이면 슬라이더 없이 그 장만 쓴다
+- [x] 풀이 화면은 그 문제의 슬라이스(한 장이면 1장)를 모두 받은 뒤에 뷰어를 연다. 경로는 `/stylesheets`이면 그 파일을 한꺼번에 받고, 막히면 `GET /learning/problem/{번호}/image?slice_index=`로 최대 6장씩 받는다. 다 받기 전에는 돌아가는 표시와 "로딩중", 받은 장 수(예: 3 / 13)를 보여 준다. 일정 시간으로 끄지 않는다. 받은 장은 그 문제를 보는 동안 캐시에 둔다
 - [x] ROI 도구: 원, 박스, 지우기. 드래그로 영역을 추가한다
 - [x] 제출 판독은 부위와 영상 종류로 고른다. 뇌 CT와 흉부 X-ray는 `POST /learning/roi-grade`(흉부는 서버가 흉부 모델로 채점), 뇌 MRI는 `POST /api/v1/analyze/brain-mri`, 무릎 MRI는 박스로 `POST /learning/roi-grade/knee`다. 무릎은 이미지 파일을 보내지 않고 `study_idx`, `roi_type=box`, `x`, `y`, `width`, `height`, `slice_index`(0부터), 로그인한 회원 `user_idx`(세션이 없으면 1)만 보낸다. `result`가 정답·부분정답·오답이면 그 값을 그대로 쓰고, `iou`는 정확도, `recall`은 포함률, `reference_bbox`는 정답 박스다. `reading`이 없을 때만 미채점 문구를 쓴다. 복부 등 모델이 없는 조합은 뇌 API를 호출하지 않고 안내만 한다. 여러 ROI면 마지막 영역으로 채점한다
-- [x] MRI 제출은 `slice_index`(0-based)와 `image_path`를 함께 보내고, CT는 기존처럼 생략한다
+- [x] 여러 장일 때 제출은 `slice_index`(0-based)와 `image_path`를 함께 보내고, 한 장이면 생략한다
 - [x] 채점 결과와 사용자 ROI·슬라이스 정보를 `medlens.review`에 저장하고 `/medical/review`로 이동한다
 - [x] 오른쪽 용어 사전은 `GET /glossary/search`만 쓴다. 검색어가 없으면 주소 부위의 한글 이름을 `q`에 넣고, 검색어가 있으면 그 글자만 `q`에 넣는다. 이름·설명에 나온 뇌·심장·폐·흉부·복부·무릎으로 거른다. 항목은 한글 이름 옆 괄호에 영어 이름, 한글 설명 아래에 영어 설명, 아래에 그 부위 표시를 둔다. 오른쪽 칸은 300px에서 360px이고, 영상은 남은 가로를 쓴다
 - [x] ROI가 하나도 없으면 제출하지 않고 SweetAlert2로 "ROI를 하나 이상 지정해 주세요."를 보여 준다
@@ -87,7 +87,7 @@
 
 - [x] 저장된 영상, 사용자 ROI, 오버레이, 판정(정답/부분정답/오답, 뇌 MRI는 판독)을 보여 준다. 화면은 풀이 화면과 같이 위 정보 줄, 왼쪽 영상, 오른쪽 요약이다. 오른쪽 칸은 300px에서 360px이고 영상은 남은 가로를 쓴다. 좁은 화면에서는 영상 아래에 요약이 이어진다. 리뷰 영상은 풀이와 같이 확대, 축소, 기본크기, 팬, 밝기, 리셋을 쓴다. 정보 줄에 판정과 "다음 문제 가져오기" 또는 "다시 제출", "풀이완료"를 둔다. 무릎 MRI의 정답·부분정답·오답 배지와 문구는 뇌 CT와 같다. `reference_bbox`가 있으면 정답 박스로 그린다
 - [x] 결과 요약은 추정 병명과 포함률만 보여 준다. ROI 정확도 칸은 없다. `iou`는 저장만 하고 이 화면에 그리지 않는다
-- [x] MRI면 제출한 슬라이스 번호(예: 슬라이스 43 / 190)를 결과·요약에 보여 준다
+- [x] 여러 장에서 제출했으면 슬라이스 번호(예: 슬라이스 43 / 190)를 결과·요약에 보여 준다
 - [x] 결과 요약의 소견 제목은 채점 `classification.task`를 따른다. `hemorrhage`는 출혈(ICH)과 germinoma, `thorax`는 흉부 소견, `brain-mri`는 뇌 MRI, `knee`와 `knee-mri`는 무릎 MRI다. `knee-mri`는 `label_ko`, `verdict`, `prob`를 목록으로 보여주고, `status`가 `not_evaluated`이면 점수 대신 `reason`을 보여 준다. 무릎의 정답·부분정답·오답 문구는 뇌 CT와 같다
 - [x] 제출은 `review_node`에 포함률(`rn_recall`), ROI 정확도(`rn_iou`), 위치 요약(`rn_overlay_summary`), 출혈·germinoma 소견(`rn_findings`), MRI 슬라이스(`rn_slice_index`)를 남긴다
 - [x] 결과 요약의 병명 해설은 채점 응답의 `learning_note`가 있으면 그 이름·요약·소견·함정을 보여 준다. 흉부 채점은 같은 `POST /learning/roi-grade`가 소견마다 해설을 붙인다

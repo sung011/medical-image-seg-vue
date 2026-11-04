@@ -382,7 +382,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           <li>주소 <code>/learning</code>은 세션이 없으면 <code>/login</code>으로 보낸다.</li>
           <li>처음에는 부위·영상 종류가 비어 있고 "학습 시작"은 꺼져 있다.</li>
           <li>부위를 고르기 전에는 영상 종류에 "부위를 먼저 선택해 주세요."를 보여 준다.</li>
-          <li>부위에 따라 영상 종류가 달라진다. 뇌·복부는 CT·MRI, 흉부는 X-ray만, 무릎은 MRI만.</li>
+          <li>부위에 따라 영상 종류가 달라진다. 뇌는 CT·MRI, 복부는 CT만, 흉부는 X-ray만, 무릎은 MRI만.</li>
           <li>부위를 바꾸면 이전 영상 종류가 맞지 않으면 선택을 지운다.</li>
           <li>부위와 영상 종류가 모두 있을 때만 "학습 시작"이 켜진다.</li>
           <li>"학습 시작"은 <code>/medical?region=...&amp;type=...</code>로 간다.</li>
@@ -484,10 +484,10 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
       <section id="problem">
         <h2>문제 풀이</h2>
         <h3>무엇을 하나</h3>
-        <p>주소의 부위와 영상 종류에 맞는 문제 이미지를 받아 큰 뷰어에 보여 준다. MRI는 경로가 여러 장이면 슬라이스를 넘기며 본다.</p>
+        <p>주소의 부위와 영상 종류에 맞는 문제 이미지를 받아 큰 뷰어에 보여 준다. <code>st_image</code>가 여러 장이면 MRI·CT 모두 슬라이스를 넘기며 본다.</p>
         <h3>어느 파일인가</h3>
         <ul>
-          <li><code>CaseSolvingPage.vue</code> — 문제를 불러오고 제출한다. MRI 경로 배열 파싱과 슬라이스 로드도 여기서 한다.</li>
+          <li><code>CaseSolvingPage.vue</code> — 문제를 불러오고 제출한다. 경로 배열 파싱과 슬라이스 로드도 여기서 한다.</li>
           <li><code>CaseInfoBar.vue</code> — 문제 번호와 요약, 가이드, 케이스 목록.</li>
           <li><code>XrayViewer.vue</code> — 이미지와 ROI 레이어. 슬라이스가 많으면 하단 슬라이더와 휠로 장을 바꾼다.</li>
         </ul>
@@ -496,12 +496,12 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           <li>쿼리에서 <code>region</code>, <code>type</code>을 읽고 없으면 <code>brain</code>, <code>CT</code>를 쓴다. <code>idx</code>가 있으면 그 문제 번호다.</li>
           <li><code>idx</code>가 없으면 <code>GET ${API_BASE}/learning/problems?st_part=&amp;st_modal=</code>를 호출한다. 세션 <code>idx</code>가 있으면 <code>user_idx</code>도 붙인다. 목록에서 <code>solved</code>가 아닌 첫 문제를 고른다. 없으면 "풀 수 있는 새 문제가 없습니다."다. 정답 병명은 이 목록에 없다.</li>
           <li>고른 번호 또는 주소의 <code>idx</code>로 <code>GET ${API_BASE}/learning/problem/{번호}</code>를 호출한다. 응답 <code>problem</code>에도 정답 병명은 없다. 삭제·비활성 문제면 404다.</li>
-          <li><code>type</code>이 <code>MRI</code>이면 <code>problem.st_image</code>를 경로 배열로 풀어 장 수를 정하고, 그 외는 첫 경로 한 장만 쓴다.</li>
-          <li><code>type</code>이 <code>MRI</code>이면 뷰어를 열기 전에 슬라이스를 모두 받는다. CT·X-ray도 같은 로딩 화면을 쓰고, 한 장만 받는다. <code>st_image</code>가 <code>/stylesheets</code>로 시작하면 그 경로를 한꺼번에 받는다. 개발 서버는 이 경로를 저장소로 넘겨 문제 API보다 빨리 온다. 그 경로가 실패하면 장마다 <code>GET ${API_BASE}/learning/problem/{번호}/image?slice_index=</code>를 최대 6개씩 받는다. <code>slice_index</code>는 0부터다. 한 장이라도 없으면 뷰어 대신 돌아가는 표시, "로딩중", 받은 장 수를 보여 준다. MRI는 예: 3 / 13, CT·X-ray는 0 / 1이다. 초로 세어 끄지 않고, 전부 받은 뒤에만 없어진다. 다 받으면 0번 장을 보여주고, 그 문제를 보는 동안 받은 장을 캐시에 둔다. MRI 슬라이더를 옮겨도 그 장 요청은 다시 나가지 않는다. 슬라이스를 바꾸면 ROI는 지운다. 제출할 MRI 경로는 여전히 <code>st_image</code>의 그 장 경로다.</li>
+          <li><code>problem.st_image</code>가 경로 배열이면 장 수만큼 쓰고, 한 개면 그 장만 쓴다. MRI·CT 모두 같다.</li>
+          <li>뷰어를 열기 전에 쓸 장을 모두 받는다. <code>st_image</code>가 <code>/stylesheets</code>로 시작하면 그 경로를 한꺼번에 받는다. 개발 서버는 이 경로를 저장소로 넘겨 문제 API보다 빨리 온다. 그 경로가 실패하면 장마다 <code>GET ${API_BASE}/learning/problem/{번호}/image?slice_index=</code>를 최대 6개씩 받는다. <code>slice_index</code>는 0부터다. 한 장이라도 없으면 뷰어 대신 돌아가는 표시, "로딩중", 받은 장 수(예: 3 / 13)를 보여 준다. 초로 세어 끄지 않고, 전부 받은 뒤에만 없어진다. 다 받으면 0번 장을 보여주고, 그 문제를 보는 동안 받은 장을 캐시에 둔다. 여러 장이면 슬라이더가 나오고, 옮겨도 그 장 요청은 다시 나가지 않는다. 슬라이스를 바꾸면 ROI는 지운다. 제출할 경로는 <code>st_image</code>의 그 장 경로다.</li>
           <li>실패하면 "로딩중" 대신 오류 문장을 보여 준다.</li>
         </ol>
         <h3>확인하는 법</h3>
-        <p>로그인한 뒤 Network에서 문제가 <code>/learning/problems</code> 다음 <code>/learning/problem/{번호}</code>로 가고, 그림은 경로가 <code>/stylesheets</code>이면 그 주소, 아니면 <code>/learning/problem/{번호}/image?slice_index=</code>여야 한다. <code>idx</code>를 붙이면 목록 요청 없이 그 번호만 연다. <code>/medical?region=chest&amp;type=x-ray</code>와 <code>/medical?region=brain&amp;type=CT</code>도 뷰어 전에 MRI와 같은 "로딩중"이 보이고, 한 장이면 장 수는 1이다. 슬라이더는 MRI에서 <code>st_image</code>가 여러 장일 때만 나온다. <code>/medical?region=brain&amp;type=MRI</code>는 장 수만큼 받은 뒤에 슬라이더가 나와야 하고, 그다음 슬라이더를 옮겨도 이미지 요청이 더 나가지 않아야 한다. 상단 "목록"은 SweetAlert2로 "케이스 목록 화면은 아직 연결 전입니다."를 띄운다.</p>
+        <p>로그인한 뒤 Network에서 문제가 <code>/learning/problems</code> 다음 <code>/learning/problem/{번호}</code>로 가고, 그림은 경로가 <code>/stylesheets</code>이면 그 주소, 아니면 <code>/learning/problem/{번호}/image?slice_index=</code>여야 한다. <code>idx</code>를 붙이면 목록 요청 없이 그 번호만 연다. 뷰어 전에 "로딩중"이 보이고, 한 장이면 장 수는 1이다. <code>st_image</code>가 여러 장이면 MRI·CT 모두 슬라이더가 나온다. 장 수만큼 받은 뒤에 슬라이더가 나와야 하고, 그다음 슬라이더를 옮겨도 이미지 요청이 더 나가지 않아야 한다. 상단 "목록"은 SweetAlert2로 "케이스 목록 화면은 아직 연결 전입니다."를 띄운다.</p>
       </section>
 
       <section id="guide">
@@ -537,13 +537,13 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           <li>여러 개면 마지막 ROI만 사용한다. 화면 아래 안내 문과 같다.</li>
           <li>도형이 잘리지 않게 들어간 실제 그림 영역을 계산한 뒤, 왼쪽·위·너비·높이를 0에서 1 사이 비율로 바꾼다.</li>
           <li>원은 중심 <code>cx</code>, <code>cy</code>와 <code>radius</code>로, 박스는 <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>로 <code>FormData</code>에 넣는다. 이미지 파일도 함께 보낸다.</li>
-          <li><code>type</code>이 <code>MRI</code>이면 <code>slice_index</code>(0부터)와 현재 슬라이스 <code>image_path</code>를 추가로 넣는다. CT는 이 두 필드를 보내지 않는다.</li>
+          <li>여러 장이면 <code>slice_index</code>(0부터)와 현재 슬라이스 <code>image_path</code>를 추가로 넣는다. 한 장이면 이 두 필드를 보내지 않는다.</li>
           <li>부위와 영상 종류로 판독 주소를 고른다. 뇌 CT와 흉부 X-ray는 <code>POST ${API_BASE}/learning/roi-grade</code>다. 흉부는 서버가 흉부 모델로 채점한다. 뇌 MRI는 <code>POST ${API_BASE}/api/v1/analyze/brain-mri</code>로 PNG/JPEG 한 장을 판독하고, 뇌 CT 출혈 모델은 쓰지 않는다. 무릎 MRI는 <code>CaseSolvingPage.vue</code>의 <code>requestReading</code>이 <code>gradeKneeRoi</code>로 <code>POST ${API_BASE}/learning/roi-grade/knee</code>에 <code>study_idx</code>, <code>roi_type=box</code>, <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>, <code>slice_index</code>(0부터, 9번째 장은 8), <code>user_idx</code>(로그인한 회원 번호, 세션이 없으면 1)만 보낸다. 이미지 파일은 보내지 않는다. 서버는 <code>user_idx</code>를 <code>review_node.rn_u_idx</code>에 넣는다.</li>
           <li><code>readingGrade.js</code>의 <code>kneeAsGrade</code>는 <code>reading.findings</code>가 있으면 <code>result</code>를 서버 값 그대로 둔다. 정답·부분정답·오답이면 그 배지를 쓴다. <code>iou</code>는 정확도, <code>recall</code>은 포함률, <code>reference_bbox</code>는 <code>abnormality_bbox</code>로 넘겨 정답 박스를 그린다. <code>overlay_summary</code>는 <code>reading.summary</code>다. <code>reading</code>이 없을 때만 미채점 분기를 쓴다.</li>
           <li>끝나면 결과와 ROI, 슬라이스 정보를 <code>sessionStorage</code> 키 <code>medlens.review</code>에 저장하고 <code>/medical/review</code>로 이동한다. 흉부면 응답 <code>learning_note</code>가 소견 해설이다. 리뷰의 소견 제목은 <code>classification.task</code>가 <code>thorax</code>이면 흉부 소견, <code>brain-mri</code>이면 뇌 MRI, <code>knee-mri</code>이면 무릎 MRI, <code>hemorrhage</code>이면 출혈이다.</li>
         </ol>
         <h3>확인하는 법</h3>
-        <p>이미지를 불러온 뒤 제출만 누르면 SweetAlert2로 ROI 안내가 나온다. 박스를 그린 뒤 제출하면 주소가 <code>/medical/review</code>로 바뀌고, 개발자 도구에 <code>medlens.review</code> JSON이 생겨야 한다. MRI면 JSON에 <code>sliceIndex</code>, <code>imagePath</code>가 있어야 한다. 무릎 MRI는 9번째 장(<code>slice_index=8</code>)에서 관절 가운데를 그리면 정답, 모서리만 그리면 오답이 나와야 한다. 문구는 뇌 CT와 같다. 정답은 "정답 병변을 잘 포함했습니다.", 부분정답은 일부만 겹친다는 문장, 오답은 거의 겹치지 않는다는 문장이다. 요약에는 포함률(<code>recall</code>)만 보이고 ROI 정확도 칸은 없다. <code>iou</code>는 저장 JSON에만 남는다. <code>reference_bbox</code>가 정답 박스로 그려진다. 소견 목록에 ACL 점수와 판정이 있고, 반월판은 시상면 모델이 없어 평가하지 않음이 정상이다. FastAPI를 재시작하지 않으면 회원 번호 없는 미채점 응답만 받는다. 용량이 크면 오버레이 이미지 문자열은 빼고 다시 저장한다.</p>
+        <p>이미지를 불러온 뒤 제출만 누르면 SweetAlert2로 ROI 안내가 나온다. 박스를 그린 뒤 제출하면 주소가 <code>/medical/review</code>로 바뀌고, 개발자 도구에 <code>medlens.review</code> JSON이 생겨야 한다. 여러 장이면 JSON에 <code>sliceIndex</code>, <code>imagePath</code>가 있어야 한다. 무릎 MRI는 9번째 장(<code>slice_index=8</code>)에서 관절 가운데를 그리면 정답, 모서리만 그리면 오답이 나와야 한다. 문구는 뇌 CT와 같다. 정답은 "정답 병변을 잘 포함했습니다.", 부분정답은 일부만 겹친다는 문장, 오답은 거의 겹치지 않는다는 문장이다. 요약에는 포함률(<code>recall</code>)만 보이고 ROI 정확도 칸은 없다. <code>iou</code>는 저장 JSON에만 남는다. <code>reference_bbox</code>가 정답 박스로 그려진다. 소견 목록에 ACL 점수와 판정이 있고, 반월판은 시상면 모델이 없어 평가하지 않음이 정상이다. FastAPI를 재시작하지 않으면 회원 번호 없는 미채점 응답만 받는다. 용량이 크면 오버레이 이미지 문자열은 빼고 다시 저장한다.</p>
       </section>
 
       <section id="glossary">
@@ -572,7 +572,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
       <section id="review">
         <h2>채점 리뷰</h2>
         <h3>무엇을 하나</h3>
-        <p>방금 제출한 영상, 내가 그린 영역, 서버 오버레이, 정답 여부를 보여 준다. 배치는 풀이 화면과 같다. 위 정보 줄에 판정과 다음 문제·풀이완료가 있고, 오른쪽 요약은 300px에서 360px, 영상은 남은 가로다. 영상 왼쪽에는 풀이와 같은 확대, 축소, 기본크기, 팬, 밝기, 리셋이 있다. 학습 기록에서 들어온 주소에 <code>review</code>가 있으면 그 제출 번호의 채점 이미지를 다시 보여 준다. 요약에는 추정 병명, 포함률, 출혈(ICH) 확률과 생식세포종양(germinoma) 확률을 보여 준다. ROI 정확도 칸은 없다. MRI면 몇 번째 슬라이스를 냈는지도 보여 준다. 저장이 없으면 연습용 목업을 보여 준다.</p>
+        <p>방금 제출한 영상, 내가 그린 영역, 서버 오버레이, 정답 여부를 보여 준다. 배치는 풀이 화면과 같다. 위 정보 줄에 판정과 다음 문제·풀이완료가 있고, 오른쪽 요약은 300px에서 360px, 영상은 남은 가로다. 영상 왼쪽에는 풀이와 같은 확대, 축소, 기본크기, 팬, 밝기, 리셋이 있다. 학습 기록에서 들어온 주소에 <code>review</code>가 있으면 그 제출 번호의 채점 이미지를 다시 보여 준다. 요약에는 추정 병명, 포함률, 출혈(ICH) 확률과 생식세포종양(germinoma) 확률을 보여 준다. ROI 정확도 칸은 없다. 여러 장에서 제출했으면 몇 번째 슬라이스를 냈는지도 보여 준다. 저장이 없으면 연습용 목업을 보여 준다.</p>
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>CaseReviewPage.vue</code> — 저장값을 읽어 두 패널에 넘긴다. "다음 문제 가져오기", 학습 기록에서 온 "다시 제출", "풀이완료"도 여기 둔다. 헤더는 홈과 같은 <code>MainHeader</code>다.</li>
@@ -591,7 +591,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           <li>무릎 MRI의 <code>result</code>가 정답·부분정답·오답이면 배지와 문구는 뇌 CT와 같다. 정답은 "정답 병변을 잘 포함했습니다.", 부분정답은 일부만 겹친다는 문장, 오답은 거의 겹치지 않는다는 문장이다. <code>recall</code>은 포함률이다. <code>iou</code>는 저장만 하고 요약의 ROI 정확도 칸은 그리지 않는다. <code>abnormality_bbox</code>가 있으면 정답 박스로 그린다. 소견 목록은 <code>label_ko</code>, <code>verdict</code>, <code>prob</code>다. <code>status</code>가 <code>not_evaluated</code>이면 점수 대신 <code>reason</code>이다. 뇌 MRI의 <code>판독</code> 문장은 무릎에 쓰지 않는다.</li>
           <li>오버레이는 저장된 경로가 우선이고, 없으면 응답의 base64 PNG를 이미지 주소로 만든다.</li>
           <li>리뷰 영상은 <code>XrayViewer.vue</code>다. <code>drawable</code>은 거짓이라 새로 그리지 않는다. 확대·축소·기본크기는 <code>zoom</code>을 바꾸고, 팬은 영상을 끌어 옮기고, 밝기는 <code>brightness</code>와 <code>contrast</code>를 바꾼다. 리셋은 배율 1, 위치 원점, 밝기 기본으로 되돌린다. 사용자 ROI와 정답 표시는 같은 <code>stage</code> 안에 있어 확대·이동과 함께 움직인다.</li>
-          <li>MRI이고 슬라이스 값이 있으면 결과 배지와 요약에 "슬라이스 N / M"을 보여 준다.</li>
+          <li>슬라이스 값이 있으면 결과 배지와 요약에 "슬라이스 N / M"을 보여 준다.</li>
           <li>"다음 문제"는 같은 <code>region</code>, <code>type</code>으로 <code>/medical</code>에 돌아간다. 주소에 <code>review</code>가 있으면 버튼은 "다시 제출"이고, 그 문제 <code>idx</code>로 <code>/medical</code>에 간다. 풀이 화면이 그 영상을 불러온 뒤, 제출은 그 이미지 파일을 <code>POST /learning/roi-grade</code>로 다시 보낸다.</li>
           <li>"학습 종료"는 <code>onDone</code>이 <code>/main</code>으로 보낸다. 세션은 유지된다.</li>
         </ol>
