@@ -1,6 +1,7 @@
 import {createRouter, createWebHistory} from 'vue-router'
 import SignUpPage from '../components/signup/SignUpPage.vue'
 import LoginPage from '../components/login/LoginPage.vue'
+import FindPasswordPage from '../components/account/FindPasswordPage.vue'
 import CaseSolvingPage from '../components/Medical/CaseSolvingPage.vue'
 import CaseReviewPage from '../components/Medical/review/CaseReviewPage.vue'
 import indexPage from '../components/main/indexPage.vue'
@@ -33,6 +34,18 @@ const router = createRouter({
         {
             path: '/login',
             component: LoginPage,
+            beforeEnter(to, from, next) {
+                if (getUserSession()) {
+                    next('/main')
+                    return
+                }
+                next()
+            }
+        },
+        {
+            // 비밀번호 찾기(로그인 전 화면). 로그인 상태면 메인으로 보낸다(로그인 화면과 같은 규칙).
+            path: '/find-password',
+            component: FindPasswordPage,
             beforeEnter(to, from, next) {
                 if (getUserSession()) {
                     next('/main')

@@ -35,6 +35,8 @@
         </button>
       </form>
 
+      <router-link class="login-form__find" to="/find-password">비밀번호를 잊으셨나요?</router-link>
+
       <div class="login-form__divider" role="separator">
         <span>또는</span>
       </div>
@@ -204,6 +206,19 @@ export default {
 }
 
 .login-form__signup:hover {
+  text-decoration: underline;
+}
+
+.login-form__find {
+  display: inline-block;
+  margin-top: 14px;
+  color: #5c6579;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.login-form__find:hover {
+  color: #5ab2b2;
   text-decoration: underline;
 }
 
