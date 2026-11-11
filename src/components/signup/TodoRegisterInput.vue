@@ -15,14 +15,18 @@
             <div v-show="isFirstStep" class="reg-01">
                 <div class="text-r">
                     <label for="email">이메일 아이디 * 필수</label>
-                    <input ref="emailInput" v-model="email" type="email" id="email" name="email" required maxlength="254" autocomplete="email" :disabled="sendingCode || verifyingCode || submitting" placeholder="name@example.com"/>
-                    <button type="button" :disabled="sendingCode || verifyingCode || submitting" @click="sendCode">{{ sendingCode ? '보내는 중…' : '인증번호 받기' }}</button>
+                    <div class="field-row">
+                        <input ref="emailInput" v-model="email" type="email" id="email" name="email" required maxlength="254" autocomplete="email" :disabled="sendingCode || verifyingCode || submitting" placeholder="name@example.com"/>
+                        <button type="button" class="btn-sub" :disabled="sendingCode || verifyingCode || submitting" @click="sendCode">{{ sendingCode ? '보내는 중…' : '인증번호 받기' }}</button>
+                    </div>
                 </div>
                 <div class="text-r">
                     <label for="email-code">이메일 인증번호 * 필수</label>
-                    <input v-model="emailCode" id="email-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" :disabled="sendingCode || verifyingCode || submitting" aria-describedby="email-code-status" placeholder="숫자 8자리"/>
-                    <button type="button" :disabled="sendingCode || verifyingCode || submitting || emailVerified" @click="verifyEmailCode">{{ verifyingCode ? '확인 중…' : emailVerified ? '인증 완료' : '인증번호 확인' }}</button>
-                    <p id="email-code-status" class="recovery-q__hint" :class="{ 'email-verified': emailVerified }" aria-live="polite">{{ codeStatus || '받은 편지함의 인증번호를 입력하고 확인해 주세요.' }}</p>
+                    <div class="field-row">
+                        <input v-model="emailCode" id="email-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" :disabled="sendingCode || verifyingCode || submitting" aria-describedby="email-code-status" placeholder="숫자 8자리"/>
+                        <button type="button" class="btn-sub" :class="{ 'btn-sub--done': emailVerified }" :disabled="sendingCode || verifyingCode || submitting || emailVerified" @click="verifyEmailCode">{{ verifyingCode ? '확인 중…' : emailVerified ? '인증 완료' : '인증번호 확인' }}</button>
+                    </div>
+                    <p id="email-code-status" class="field-msg" :class="{ 'is-ok': emailVerified, 'is-error': codeError && !emailVerified }" aria-live="polite">{{ codeStatus || '받은 편지함의 인증번호를 입력하고 확인해 주세요.' }}</p>
                 </div> 
 
                 <div class="text-r">
@@ -50,7 +54,8 @@
                 </div> 
                 <div class="text-r">
                     <label for="userBirth">생년월일</label>  
-                    <input v-model="userBirth" type="text" id="userBirth" name="userBirth" placeholder="생년월일을 입력해 주세요."/>
+                    <input :value="userBirth" type="text" id="userBirth" name="userBirth" inputmode="numeric" maxlength="10" autocomplete="off" :class="{ 'is-invalid': birthError }" :aria-invalid="birthError ? 'true' : 'false'" aria-describedby="userBirth-msg" placeholder="YYYY-MM-DD (예: 2000-01-01)" @input="onBirthInput" @blur="birthTouched = true"/>
+                    <p v-if="birthError" id="userBirth-msg" class="field-msg field-msg--under is-error" role="alert">{{ birthError }}</p>
                 </div>
                 <div class="text-r">
                     <label for="userSchool">학교</label>  
@@ -61,17 +66,18 @@
                     <input v-model="userMajor" type="text" id="userMajor" name="userMajor" placeholder="전공을 입력해 주세요."/>
                 </div>
 
+                <!-- 비밀번호 찾기 질문(선택형): 질문 하나를 골라 답 하나를 서버에 해시로만 저장한다. 비밀번호를 잊었을 때 이 답으로 본인을 확인한다. -->
                 <div class="text-r recovery-q">
-                    <label for="recovery-question">비밀번호 찾기 질문 * 필수</label>
+                    <label for="recovery-question" class="recovery-q__title">비밀번호 찾기 질문 * 필수</label>
+                    <span class="recovery-q__hint">비밀번호를 잊었을 때 본인 확인에 써요. 남이 쉽게 알 수 없는 답을 적어 주세요. 영문 대소문자와 앞뒤·연속 공백은 구분하지 않아요.</span>
                     <select id="recovery-question" v-model="selectedQuestion" :disabled="submitting" required>
                         <option disabled value="">질문을 선택해 주세요</option>
                         <option v-for="q in questions" :key="q.id" :value="q.id">{{ q.label }}</option>
                     </select>
                 </div>
                 <div class="text-r">
-                    <label for="recovery-answer">선택한 질문의 답변 * 필수</label>
-                    <input id="recovery-answer" v-model="selectedAnswer" :type="showAnswers ? 'text' : 'password'" maxlength="50" autocomplete="off" :disabled="submitting" placeholder="답변을 입력해 주세요"/>
-                    <span class="recovery-q__hint">비밀번호를 잊었을 때 선택한 질문의 답변으로 본인을 확인해요.</span>
+                    <label for="recovery-answer">선택한 질문의 답 * 필수</label>
+                    <input id="recovery-answer" v-model="selectedAnswer" :type="showAnswers ? 'text' : 'password'" maxlength="50" autocomplete="off" :disabled="submitting" placeholder="답을 입력해 주세요."/>
                 </div>
                 <div class="text-r">
                     <label class="recovery-q__toggle"><input v-model="showAnswers" type="checkbox" data-testid="signup-answer-toggle"/> 입력한 답 보기</label>
@@ -95,12 +101,35 @@
 import { API_BASE } from '../../apiBase'
 import { showMessage } from '../../notify'
 
-// 고정 질문 3개(security_questions_v1). 서버와 같은 ID·순서다.
+// 선택형 질문(security_question_choice_v2). 서버 CHOICE_QUESTION_IDS 와 같은 ID·순서다. 하나만 골라 답한다.
 const RECOVERY_QUESTIONS = [
   { id: 'Q01', label: '처음 다닌 초등학교 이름' },
   { id: 'Q02', label: '어릴 때 사용하던 별명' },
-  { id: 'Q03', label: '어릴 때 살았던 동네 이름' }
+  { id: 'Q03', label: '어릴 때 살았던 동네 이름' },
+  { id: 'Q04', label: '내 보물 1호' }
 ]
+
+/** 숫자만 골라 YYYY-MM-DD 모양으로 맞춘다(최대 8자리). */
+function formatBirth(text) {
+  const d = String(text || '').replace(/[^0-9]/g, '').slice(0, 8)
+  if (d.length <= 4) return d
+  if (d.length <= 6) return `${d.slice(0, 4)}-${d.slice(4)}`
+  return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`
+}
+
+/** 생년월일 확인. 형식·미래·만 14세는 서버 user_birth 와 같은 기준, 1900년 하한은 화면 입력 정책(서버에는 없음). 문제가 없으면 ''. */
+function birthProblem(value, today = new Date()) {
+  if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) return '생년월일 8자리를 입력해 주세요. 예: 2000-01-01'
+  const [y, m, d] = value.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return '없는 날짜예요. 월·일을 확인해 주세요.'
+  if (y < 1900) return '1900년 이후 날짜로 입력해 주세요.'
+  const t = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  if (dt > t) return '오늘 이전 날짜로 입력해 주세요.'
+  const age = t.getFullYear() - y - ((t.getMonth() < m - 1 || (t.getMonth() === m - 1 && t.getDate() < d)) ? 1 : 0)
+  if (age < 14) return '만 14세 이상 가입할 수 있어요.'
+  return ''
+}
 const FIELD_LABELS = { user_id: '이메일 아이디', email_code: '인증번호', user_pw: '비밀번호', user_name: '이름', user_birth: '생년월일', user_un: '학교', user_sp: '전공' }
 const CODE_TEXT = {
   missing: '입력해 주세요.',
@@ -208,6 +237,11 @@ function answerProblem(text) {
 
 export default {
     computed: {
+        birthError () {
+            if (!this.userBirth) return this.birthTouched ? '생년월일을 입력해 주세요.' : ''
+            if (!this.birthTouched && this.userBirth.length < 10) return ''
+            return birthProblem(this.userBirth)
+        },
         emailVerified () {
             return this.verifiedEmail === this.email.trim().toLowerCase() &&
                 this.verifiedCode === this.emailCode && this.verifiedCode !== ''
@@ -217,6 +251,7 @@ export default {
         email () {
             this.emailCode = ''
             this.codeStatus = ''
+            this.codeError = false
             this.verifiedEmail = ''
             this.verifiedCode = ''
         },
@@ -227,6 +262,7 @@ export default {
             this.verifiedEmail = ''
             this.verifiedCode = ''
             this.codeStatus = ''
+            this.codeError = false
         }
     },
     data () {
@@ -234,6 +270,7 @@ export default {
             email: '',
             emailCode: '',
             codeStatus: '',
+            codeError: false,
             sendingCode: false,
             verifyingCode: false,
             verifiedEmail: '',
@@ -242,6 +279,7 @@ export default {
             repassword: '',
             userNickname: '',
             userBirth: '',
+            birthTouched: false,
             userSchool: '',
             userMajor: '',
             // 비밀번호 찾기 질문 답(메모리에만 둔다. 저장소·주소·콘솔에 쓰지 않는다)
@@ -263,32 +301,41 @@ export default {
         this.selectedAnswer = ''
     },
     methods: {
+        setCodeStatus (text, error = false) {
+            this.codeStatus = text
+            this.codeError = error
+        },
+        onBirthInput (event) {
+            const formatted = formatBirth(event.target.value)
+            this.userBirth = formatted
+            if (event.target.value !== formatted) event.target.value = formatted
+        },
         async sendCode () {
             if (this.sendingCode || this.verifyingCode || this.submitting) return
             if (!this.$refs.emailInput.validity.valid) {
-                this.codeStatus = '올바른 이메일 주소를 입력해 주세요.'
+                this.setCodeStatus('올바른 이메일 주소를 입력해 주세요.', true)
                 this.$refs.emailInput.focus()
                 return
             }
             this.sendingCode = true
             this.emailCode = ''
-            this.codeStatus = ''
+            this.setCodeStatus('')
             try {
                 const result = await postSignup('/signup/email-code', { email: this.email.trim().toLowerCase() })
                 if (!this.alive) return
                 if (result.status === 202 && result.data?.ok === true) {
-                    this.codeStatus = '인증번호를 보냈어요. 10분 안에 입력해 주세요.'
+                    this.setCodeStatus('인증번호를 보냈어요. 10분 안에 입력해 주세요.')
                 } else if (result.status === 429) {
-                    this.codeStatus = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'
+                    this.setCodeStatus('요청이 너무 많아요. 잠시 후 다시 시도해 주세요.', true)
                 } else if (result.status === 422) {
-                    this.codeStatus = '이메일 주소 형식을 확인해 주세요.'
+                    this.setCodeStatus('이메일 주소 형식을 확인해 주세요.', true)
                 } else if (result.status === 503) {
-                    this.codeStatus = '지금은 메일을 보낼 수 없어요. 잠시 후 다시 시도해 주세요.'
+                    this.setCodeStatus('지금은 메일을 보낼 수 없어요. 잠시 후 다시 시도해 주세요.', true)
                 } else {
-                    this.codeStatus = '발송을 확인하지 못했어요. 받은 편지함을 확인해 주세요.'
+                    this.setCodeStatus('발송을 확인하지 못했어요. 받은 편지함을 확인해 주세요.', true)
                 }
             } catch {
-                if (this.alive) this.codeStatus = '발송을 확인하지 못했어요. 받은 편지함을 확인해 주세요.'
+                if (this.alive) this.setCodeStatus('발송을 확인하지 못했어요. 받은 편지함을 확인해 주세요.', true)
             } finally {
                 this.sendingCode = false
             }
@@ -296,32 +343,32 @@ export default {
         async verifyEmailCode () {
             if (this.sendingCode || this.verifyingCode || this.submitting || this.emailVerified) return
             if (!this.$refs.emailInput.validity.valid || !/^[0-9]{8}$/.test(this.emailCode)) {
-                this.codeStatus = '이메일 주소와 인증번호 8자리를 입력해 주세요.'
+                this.setCodeStatus('이메일 주소와 인증번호 8자리를 입력해 주세요.', true)
                 return
             }
             const email = this.email.trim().toLowerCase()
             const code = this.emailCode
             this.verifyingCode = true
-            this.codeStatus = ''
+            this.setCodeStatus('')
             try {
                 const result = await postSignup('/signup/email-code/verify', { email, email_code: code })
                 if (!this.alive || email !== this.email.trim().toLowerCase() || code !== this.emailCode) return
                 if (result.status === 200 && result.data?.ok === true) {
                     this.verifiedEmail = email
                     this.verifiedCode = code
-                    this.codeStatus = '이메일 인증이 완료됐어요.'
+                    this.setCodeStatus('이메일 인증이 완료됐어요.')
                 } else if (result.status === 400 || result.status === 422) {
-                    this.codeStatus = '인증번호가 맞는지 확인해 주세요. 만료되었다면 다시 받아 주세요.'
+                    this.setCodeStatus('인증번호가 맞는지 확인해 주세요. 만료되었다면 다시 받아 주세요.', true)
                 } else if (result.status === 429) {
-                    this.codeStatus = '확인 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'
+                    this.setCodeStatus('확인 요청이 너무 많아요. 잠시 후 다시 시도해 주세요.', true)
                 } else if (result.status === 503) {
-                    this.codeStatus = '지금은 인증을 확인할 수 없어요. 잠시 후 다시 시도해 주세요.'
+                    this.setCodeStatus('지금은 인증을 확인할 수 없어요. 잠시 후 다시 시도해 주세요.', true)
                 } else {
-                    this.codeStatus = '인증 결과를 확인하지 못했어요. 다시 확인해 주세요.'
+                    this.setCodeStatus('인증 결과를 확인하지 못했어요. 다시 확인해 주세요.', true)
                 }
             } catch {
                 if (this.alive && email === this.email.trim().toLowerCase() && code === this.emailCode) {
-                    this.codeStatus = '인증 결과를 확인하지 못했어요. 다시 확인해 주세요.'
+                    this.setCodeStatus('인증 결과를 확인하지 못했어요. 다시 확인해 주세요.', true)
                 }
             } finally {
                 this.verifyingCode = false
@@ -356,6 +403,11 @@ export default {
             }
             if (!this.userNickname.trim() || !this.userBirth.trim() || !this.userSchool.trim() || !this.userMajor.trim()) {
                 showMessage('이름, 생년월일, 학교, 전공을 입력해 주세요.', 'warning')
+                return
+            }
+            if (this.birthError || birthProblem(this.userBirth)) {
+                this.birthTouched = true
+                showMessage(this.birthError || birthProblem(this.userBirth), 'warning')
                 return
             }
             if (!this.questions.some(q => q.id === this.selectedQuestion)) {
@@ -514,9 +566,50 @@ hr {
   opacity: .55;
   cursor: not-allowed;
 }
-.email-verified {
+/* 입력칸 옆 보조 버튼(인증번호 받기·확인): 큰 초록 버튼은 '다음' 하나만 남긴다 */
+.field-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 26px;
+}
+.text-r .field-row input {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.text-r .btn-sub {
+  flex: 0 0 112px;
+  width: 112px;
+  margin-bottom: 0;
+  background-color: #fff;
+  color: #1f9e92;
+  border: 1px solid #2ec4b6;
+  font-size: 13px;
+}
+.text-r .btn-sub--done:disabled {
+  opacity: 1;
+  background-color: #e8f8f6;
+  color: #167466;
+}
+.field-msg {
+  display: block;
+  margin: -18px 0 18px;
+  color: #5c6579;
+  font-size: 12px;
+}
+.field-msg--under {
+  margin-top: -20px;
+}
+.field-msg.is-ok {
   color: #167466;
   font-weight: bold;
+}
+.field-msg.is-error {
+  color: #d93025;
+}
+.text-r input.is-invalid {
+  border-color: #d93025;
+  background-color: #fff6f5;
 }
 .text-r a {
   color: #2ec4b6;
