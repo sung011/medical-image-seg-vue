@@ -122,3 +122,52 @@ export function errorText(status, data, step) {
   }
   return '결과를 확인하지 못했어요. 잠시 후 다시 시도해 주세요. (자동으로 다시 보내지 않아요)'
 }
+// 가린 아이디 최대 길이(코드포인트). 원래 아이디 최대 254자 → 앞부분 1~2자 + '***' 로 바뀌어 최대 3자 늘어난다.
+export const MASKED_ID_MAX = 257
+// 한 번에 보여 주는 아이디 수. 서버는 개수 제한이 없으므로 넘치면 '총 N개 중 20개' 로 안내한다.
+export const FIND_ID_DISPLAY_MAX = 20
+
+/**
+ * 서버 mask_user_id 가 만드는 모양인지 정확히 본다.
+ * 서버 규칙: local, @, domain = 아이디.partition('@') → local 앞 2자(local 이 2자 이하면 1자) + '***' + ('@' + domain).
+ * - 앞부분 1~2 코드포인트('@' 없음) 바로 뒤에 '***' 가 오고, 그 뒤는 끝(기존 비이메일 아이디)이거나 '@' + 도메인(다른 '@' 없음)이어야 한다.
+ * - 앞부분 자체에 '*' 가 있을 수 있어(이메일 local 허용 문자) 2자·1자를 모두 맞춰 본다.
+ * - 프런트가 대신 가려서 성공으로 바꾸지 않는다. 모르는 모양이면 false.
+ */
+export function isServerMaskedId(id) {
+  if (typeof id !== 'string') return false
+  const cps = Array.from(id)
+  if (cps.length < 4 || cps.length > MASKED_ID_MAX) return false
+  for (const keep of [2, 1]) {
+    const prefix = cps.slice(0, keep)
+    if (prefix.includes('@')) continue
+    if (cps.slice(keep, keep + 3).join('') !== '***') continue
+    const rest = cps.slice(keep + 3)
+    if (rest.length === 0) return true
+    if (rest[0] === '@' && rest.length > 1 && !rest.slice(1).includes('@')) return true
+  }
+  return false
+}
+
+/**
+ * 아이디 찾기 성공 계약: 200 + JSON ok:true + user_ids 가 비어 있지 않은 배열이고 **모든** 항목이 서버 마스킹 모양.
+ * 한 항목이라도 다르면 전체를 성공으로 보지 않는다(null).
+ * 맞으면 { ids: 앞에서부터 최대 20개, total: 전체 개수 }.
+ */
+export function maskedIdsFrom(result) {
+  if (!isOk(result)) return null
+  const ids = result.data.user_ids
+  if (!Array.isArray(ids) || ids.length === 0) return null
+  if (!ids.every(isServerMaskedId)) return null
+  return { ids: ids.slice(0, FIND_ID_DISPLAY_MAX), total: ids.length }
+}
+
+/** 아이디 찾기 오류를 고정 문구로. 서버 원문·입력 값은 쓰지 않는다. */
+export function findIdErrorText(result) {
+  const status = result ? result.status : 0
+  if (status === 404) return '입력한 이름·생년월일과 일치하는 회원을 찾지 못했어요. 가입할 때 입력한 정보를 다시 확인해 주세요.'
+  if (status === 429) return '시도 횟수가 너무 많아요. 10분 후 다시 시도해 주세요.'
+  if (status === 503) return '지금은 점검 중이에요. 잠시 후 다시 시도해 주세요.'
+  if (status === 422) return '이름과 생년월일을 확인해 주세요.'
+  return '결과를 확인하지 못했어요. 잠시 후 다시 시도해 주세요. (자동으로 다시 보내지 않아요)'
+}

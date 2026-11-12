@@ -35,7 +35,11 @@
         </button>
       </form>
 
-      <router-link class="login-form__find" to="/find-password">비밀번호를 잊으셨나요?</router-link>
+      <div class="login-form__finds">
+        <router-link class="login-form__find" to="/find-id">아이디 찾기</router-link>
+        <span class="login-form__find-sep" aria-hidden="true">|</span>
+        <router-link class="login-form__find" to="/find-password">비밀번호 찾기</router-link>
+      </div>
 
       <div class="login-form__divider" role="separator">
         <span>또는</span>
@@ -209,9 +213,21 @@ export default {
   text-decoration: underline;
 }
 
+.login-form__finds {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-form__find-sep {
+  color: #d7dde8;
+  font-size: 12px;
+}
+
 .login-form__find {
   display: inline-block;
-  margin-top: 14px;
   color: #5c6579;
   font-size: 13px;
   text-decoration: none;

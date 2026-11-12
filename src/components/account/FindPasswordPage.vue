@@ -98,7 +98,7 @@
         </form>
         <div class="text-r links">
           <router-link to="/login">로그인으로 돌아가기</router-link>
-          <router-link to="/signup">회원가입</router-link>
+          <router-link to="/find-id">아이디 찾기</router-link>
         </div>
       </div>
     </div>
