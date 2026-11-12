@@ -8,6 +8,7 @@
           :image-src="imageSrc"
           :overlay-src="overlaySrc"
           :user-roi="userRoi"
+          :user-rois="userRois"
           :grade="grade"
           :using-mock="usingMock"
           :type="type"
@@ -89,6 +90,7 @@ export default {
       this.grade = saved.grade
       this.imageSrc = saved.imageSrc
       this.userRoi = saved.userRoi
+      this.userRois = saved.userRois || (saved.userRoi ? [saved.userRoi] : [])
       this.overlaySrc = saved.overlaySrc
       this.type = saved.type || this.$route.query.type || ''
       this.sliceIndex = saved.sliceIndex
@@ -124,6 +126,7 @@ export default {
       this.imageSrc = ''
       this.overlaySrc = ''
       this.userRoi = null
+      this.userRois = []
       if (!Number.isFinite(userIdx) || userIdx < 1) {
         this.loading = false
         this.loadError = '로그인 정보가 없습니다.'

@@ -79,11 +79,13 @@ export function createDefaultReview() {
     imageSrc: '/medical/xray-sample.png',
     overlaySrc: '',
     userRoi: { ...MOCK_USER_ROI },
+    userRois: [{ ...MOCK_USER_ROI }],
     grade: { ...MOCK_GRADE },
     usingMock: true,
     type: '',
     sliceIndex: null,
-    sliceTotal: null
+    sliceTotal: null,
+    reviewIdx: null
   }
 }
 
@@ -178,14 +180,19 @@ export function loadReviewFromStorage() {
     return {
       usingMock: false,
       grade: saved.gradeResult,
-      imageSrc: publicAssetUrl(saved.imagePath) || saved.imageDataUrl || '',
+      // imageUrl: 서버가 대신 받아 주는 주소가 있으면 먼저 쓴다. 없으면 기존 경로
+      imageSrc: saved.imageUrl || publicAssetUrl(saved.imagePath) || saved.imageDataUrl || '',
       userRoi: saved.userRoi || null,
+      // 흉부는 그린 ROI를 모두 채점한다. 예전 저장값에는 없어서 userRoi 하나로 채운다
+      userRois: saved.userRois || (saved.userRoi ? [saved.userRoi] : []),
       overlaySrc:
         publicAssetUrl(saved.overlayPath) ||
         overlaySrcFromBase64(saved.gradeResult.overlay_png_base64),
       type: saved.type || '',
       sliceIndex,
-      sliceTotal
+      sliceTotal,
+      // 서버에 저장된 풀이 기록 번호
+      reviewIdx: saved.reviewIdx ?? saved.gradeResult.review_idx ?? null
     }
   } catch (e) {
     return null
