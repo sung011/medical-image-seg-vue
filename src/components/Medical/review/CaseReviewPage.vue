@@ -8,6 +8,7 @@
           :image-src="imageSrc"
           :overlay-src="overlaySrc"
           :user-roi="userRoi"
+          :user-rois="userRois"
           :grade="grade"
           :using-mock="usingMock"
           :type="type"
@@ -38,7 +39,14 @@ import PageFrame from '../../main/PageFrame.vue'
 import ReviewResultPanel from './ReviewResultPanel.vue'
 import ReviewSummaryPanel from './ReviewSummaryPanel.vue'
 import {getUserSession} from '../../login/authSession'
-import { createDefaultReview, fetchLearnerReview, fetchSavedReview, loadReviewFromStorage, mapRetryProblem } from './reviewModel'
+import {
+  createDefaultReview,
+  fetchLearnerReview,
+  fetchSavedReview,
+  loadReviewFromStorage,
+  mapRetryProblem,
+  normalizeUserRois
+} from './reviewModel'
 
 export default {
   name: 'CaseReviewPage',
@@ -88,7 +96,9 @@ export default {
       this.usingMock = saved.usingMock
       this.grade = saved.grade
       this.imageSrc = saved.imageSrc
-      this.userRoi = saved.userRoi
+      const rois = normalizeUserRois(saved)
+      this.userRois = rois
+      this.userRoi = rois[0] || null
       this.overlaySrc = saved.overlaySrc
       this.type = saved.type || this.$route.query.type || ''
       this.sliceIndex = saved.sliceIndex
@@ -124,6 +134,7 @@ export default {
       this.imageSrc = ''
       this.overlaySrc = ''
       this.userRoi = null
+      this.userRois = []
       if (!Number.isFinite(userIdx) || userIdx < 1) {
         this.loading = false
         this.loadError = '로그인 정보가 없습니다.'

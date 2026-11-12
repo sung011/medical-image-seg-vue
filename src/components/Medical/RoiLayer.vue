@@ -104,7 +104,7 @@ export default {
       this.drawing = false
       if (this.draft && this.draft.w > 1.5 && this.draft.h > 1.5) {
         this.$emit('add-roi', {
-          id: Date.now(),
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           type: this.draft.type,
           x: this.draft.x,
           y: this.draft.y,
@@ -140,13 +140,13 @@ export default {
   box-sizing: border-box;
   border: 2px dashed #2dd4bf;
   background: rgba(45, 212, 191, 0.12);
-  pointer-events: auto;
+  pointer-events: none;
 }
 .roi-shape.draft {
   opacity: 0.75;
-  pointer-events: none;
 }
 .roi-shape.erasable {
+  pointer-events: auto;
   cursor: pointer;
 }
 </style>

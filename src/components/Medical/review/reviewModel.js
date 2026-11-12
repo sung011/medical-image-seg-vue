@@ -79,12 +79,22 @@ export function createDefaultReview() {
     imageSrc: '/medical/xray-sample.png',
     overlaySrc: '',
     userRoi: { ...MOCK_USER_ROI },
+    userRois: [{ ...MOCK_USER_ROI }],
     grade: { ...MOCK_GRADE },
     usingMock: true,
     type: '',
     sliceIndex: null,
     sliceTotal: null
   }
+}
+
+export function normalizeUserRois(saved) {
+  if (!saved) return []
+  if (Array.isArray(saved.userRois) && saved.userRois.length) {
+    return saved.userRois.filter(Boolean)
+  }
+  if (saved.userRoi) return [saved.userRoi]
+  return []
 }
 
 export async function fetchSavedReview(reviewIdx, userIdx) {
@@ -121,6 +131,7 @@ export async function fetchSavedReview(reviewIdx, userIdx) {
     studyIdx: data.study_idx,
     imageSrc: publicAssetUrl(data.image),
     userRoi: null,
+    userRois: [],
     overlaySrc: '',
     type: data.type || '',
     sliceIndex: sliceIndex != null && sliceIndex >= 0 ? sliceIndex : null,
@@ -175,11 +186,13 @@ export function loadReviewFromStorage() {
       saved.sliceTotal != null && Number.isFinite(Number(saved.sliceTotal))
         ? Number(saved.sliceTotal)
         : null
+    const userRois = normalizeUserRois(saved)
     return {
       usingMock: false,
       grade: saved.gradeResult,
       imageSrc: publicAssetUrl(saved.imagePath) || saved.imageDataUrl || '',
-      userRoi: saved.userRoi || null,
+      userRoi: userRois[0] || null,
+      userRois,
       overlaySrc:
         publicAssetUrl(saved.overlayPath) ||
         overlaySrcFromBase64(saved.gradeResult.overlay_png_base64),

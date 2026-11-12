@@ -41,7 +41,7 @@
               @update:slice-index="onSliceIndex"
           />
           <p class="footer-hint">
-            ⓘ 원본 의료 영상 파일과 ROI 좌표를 그대로 제출합니다. 여러 개를 그리면 마지막 ROI로 채점합니다.
+            ⓘ 원본 의료 영상 파일과 ROI 좌표를 그대로 제출합니다. 여러 개를 그리면 모두 리뷰에 남기고, 전체를 감싼 영역으로 채점합니다.
             <template v-if="hasMultiSlices"> 여러 장이면 슬라이더·마우스 휠로 슬라이스를 바꾼 뒤, 보이는 장으로 제출합니다.</template>
           </p>
         </div>
@@ -149,6 +149,25 @@ function roiToImageBox(roi, layout, frameW, frameH) {
     y: Math.min(y1, y2),
     width: Math.abs(x2 - x1),
     height: Math.abs(y2 - y1)
+  }
+}
+
+function unionImageBoxes(boxes) {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const box of boxes) {
+    minX = Math.min(minX, box.x)
+    minY = Math.min(minY, box.y)
+    maxX = Math.max(maxX, box.x + box.width)
+    maxY = Math.max(maxY, box.y + box.height)
+  }
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(0, maxX - minX),
+    height: Math.max(0, maxY - minY)
   }
 }
 
@@ -554,8 +573,27 @@ export default {
       }
       return {layoutInfo, box}
     },
+    buildGradeRoi() {
+      const boxes = this.rois.map((roi) => {
+        const {box} = this.getNormalizedRoi(roi)
+        return {type: roi.type, ...box}
+      })
+      if (!boxes.length) {
+        throw new Error('ROI를 하나 이상 지정해 주세요.')
+      }
+      if (boxes.length === 1) {
+        return {gradeRoi: boxes[0], userRois: boxes}
+      }
+      const merged = unionImageBoxes(boxes)
+      if (merged.width <= 0 || merged.height <= 0) {
+        throw new Error('ROI가 영상 밖에 있습니다.')
+      }
+      return {
+        gradeRoi: {type: 'box', ...merged},
+        userRois: boxes
+      }
+    },
     buildRoiPayload(roi) {
-      const {layoutInfo, box} = this.getNormalizedRoi(roi)
       const region = this.$route.query.region || 'brain'
       const type = this.$route.query.type || 'CT'
       const multiSlice = this.hasMultiSlices
@@ -577,7 +615,17 @@ export default {
         }
       }
 
+      const box = {
+        x: roi.x,
+        y: roi.y,
+        width: roi.width,
+        height: roi.height
+      }
       if (roi.type === 'circle') {
+        const layoutInfo = this.$refs.viewer && this.$refs.viewer.getImageLayout()
+        if (!layoutInfo) {
+          throw new Error('이미지가 아직 준비되지 않았습니다.')
+        }
         const cx = box.x + box.width / 2
         const cy = box.y + box.height / 2
         const radiusPx =
@@ -647,7 +695,6 @@ export default {
         return
       }
 
-      const roi = this.rois[this.rois.length - 1]
       const region = this.$route.query.region || 'brain'
       const type = this.$route.query.type || 'CT'
       const kind = readingKind(region, type)
@@ -655,18 +702,19 @@ export default {
         showMessage('이 부위와 영상 종류에는 판독 모델이 없습니다. 뇌 CT, 뇌 MRI, 흉부 X-ray, 무릎 MRI만 판독합니다.', 'warning')
         return
       }
-      if (kind === 'knee-mri' && roi.type !== 'box') {
+      if (kind === 'knee-mri' && this.rois.some((roi) => roi.type !== 'box')) {
         showMessage('무릎 MRI는 박스로만 채점합니다.', 'warning')
         return
       }
       this.submitting = true
 
       try {
-        const {form, box, multiSlice} = this.buildRoiPayload(roi)
+        const {gradeRoi, userRois} = this.buildGradeRoi()
+        const {form, box, multiSlice} = this.buildRoiPayload(gradeRoi)
         if (multiSlice && kind !== 'brain-mri' && !this.problemImagePath) {
           throw new Error('제출할 슬라이스 경로가 없습니다.')
         }
-        const data = await this.requestReading(kind, form, box, roi)
+        const data = await this.requestReading(kind, form, box)
         if (!data) return
 
         const overlayPath = data.overlay_png_base64 && data.rn_image ? data.rn_image : ''
@@ -680,7 +728,8 @@ export default {
           overlayPath,
           sliceIndex: multiSlice ? this.shownSliceIndex : null,
           sliceTotal: multiSlice ? this.slicePaths.length : null,
-          userRoi: {type: roi.type, ...box},
+          userRoi: userRois[0],
+          userRois,
           gradeResult: {...data, overlay_png_base64: overlayPath ? null : data.overlay_png_base64}
         }
         try {

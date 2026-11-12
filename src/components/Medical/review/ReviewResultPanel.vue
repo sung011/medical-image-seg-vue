@@ -30,10 +30,11 @@
               :style="shapeStyle(answerShape)"
           />
           <div
-              v-if="userRoi"
+              v-for="(roi, index) in displayUserRois"
+              :key="'user-roi-' + index"
               class="shape user"
-              :class="userRoi.type"
-              :style="shapeStyle(userRoi)"
+              :class="roi.type"
+              :style="shapeStyle(roi)"
           />
         </template>
         <template #hud>
@@ -82,6 +83,10 @@ export default {
       type: Object,
       default: null
     },
+    userRois: {
+      type: Array,
+      default: null
+    },
     grade: {
       type: Object,
       required: true
@@ -109,6 +114,12 @@ export default {
     }
   },
   computed: {
+    displayUserRois() {
+      if (Array.isArray(this.userRois) && this.userRois.length) {
+        return this.userRois.filter(Boolean)
+      }
+      return this.userRoi ? [this.userRoi] : []
+    },
     resultLabel() {
       return formatResult(this.grade.result)
     },
