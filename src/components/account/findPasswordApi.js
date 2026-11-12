@@ -10,8 +10,6 @@ export const CHOICE_QUESTIONS = [
   { id: 'Q03', label: '어릴 때 살았던 동네 이름' },
   { id: 'Q04', label: '내 보물 1호' }
 ]
-// 예전에 질문 세 개로 가입한 계정(security_questions_v1). 서버 QUESTION_IDS 와 같다.
-export const LEGACY_QUESTIONS = CHOICE_QUESTIONS.slice(0, 3)
 
 /**
  * POST 하나. 응답 헤더부터 본문을 다 읽을 때까지 15초 제한을 한 수명으로 묶는다(가입 화면과 같은 기준).
@@ -104,7 +102,7 @@ const FIELD_LABELS = { user_id: '이메일 아이디', user_name: '이름', user
 
 /** 서버 오류를 고정 문구로 바꾼다. 서버 원문·입력 값은 화면에 쓰지 않는다. */
 export function errorText(status, data, step) {
-  if (status === 404) return '입력한 정보를 확인하지 못했어요. 아이디·이름·생년월일과 가입 방식·질문·답을 다시 확인해 주세요.'
+  if (status === 404) return '입력한 정보를 확인하지 못했어요. 아이디·이름·생년월일과 질문·답을 다시 확인해 주세요.'
   if (status === 429) return '시도 횟수가 너무 많아요. 10분 후 다시 시도해 주세요.'
   if (status === 503) return '지금은 점검 중이에요. 잠시 후 다시 시도해 주세요.'
   if (status === 400 && step === 2) return '새 비밀번호와 확인 비밀번호가 일치하지 않아요.'
@@ -113,7 +111,7 @@ export function errorText(status, data, step) {
     for (const item of data.detail) {
       const loc = item && Array.isArray(item.loc) ? item.loc : []
       let line
-      if (loc[1] === 'answers') line = '가입 방식과 질문·답을 확인해 주세요.'
+      if (loc[1] === 'answers') line = '질문과 답을 확인해 주세요.'
       else if (FIELD_LABELS[loc[1]]) line = `${FIELD_LABELS[loc[1]]}을(를) 확인해 주세요.`
       else line = '입력한 내용을 확인해 주세요.'
       if (!lines.includes(line)) lines.push(line)

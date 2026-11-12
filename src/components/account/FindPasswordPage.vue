@@ -33,40 +33,18 @@
 
             <div class="text-r recovery-q">
               <span class="recovery-q__title">비밀번호 찾기 질문</span>
-              <span class="recovery-q__hint">가입할 때 등록한 방식을 골라 주세요. 영문 대소문자와 앞뒤·연속 공백은 구분하지 않아요.</span>
-              <div class="mode-row" role="radiogroup" aria-label="가입 방식">
-                <label class="mode-option" :class="{ 'is-selected': mode === 'one' }">
-                  <input v-model="mode" type="radio" name="find-mode" value="one" :disabled="busy" data-testid="find-mode-one"/>
-                  질문 하나로 가입
-                </label>
-                <label class="mode-option" :class="{ 'is-selected': mode === 'three' }">
-                  <input v-model="mode" type="radio" name="find-mode" value="three" :disabled="busy" data-testid="find-mode-three"/>
-                  질문 세 개로 가입(예전 방식)
-                </label>
-              </div>
+              <span class="recovery-q__hint">가입할 때 고른 질문과 그 답을 입력해 주세요. 영문 대소문자와 앞뒤·연속 공백은 구분하지 않아요.</span>
             </div>
-
-            <template v-if="mode === 'one'">
-              <div class="text-r">
-                <label for="find-question">등록한 질문</label>
-                <select id="find-question" v-model="selectedQuestion" :disabled="busy">
-                  <option disabled value="">질문을 선택해 주세요</option>
-                  <option v-for="q in choiceQuestions" :key="q.id" :value="q.id">{{ q.label }}</option>
-                </select>
-              </div>
-              <div class="text-r">
-                <label for="find-answer">답</label>
-                <input id="find-answer" v-model="selectedAnswer" :type="showAnswers ? 'text' : 'password'" maxlength="50" autocomplete="off" :disabled="busy" placeholder="답을 입력해 주세요."/>
-              </div>
-            </template>
-            <template v-else>
-              <div v-for="(q, i) in legacyQuestions" :key="q.id" class="text-r">
-                <label :for="'find-answer-' + q.id">질문 {{ i + 1 }}. {{ q.label }}</label>
-                <input :id="'find-answer-' + q.id" v-model="legacyAnswers[q.id]" :type="showAnswers ? 'text' : 'password'" maxlength="50" autocomplete="off" :disabled="busy" placeholder="답을 입력해 주세요."/>
-              </div>
-            </template>
             <div class="text-r">
-              <label class="recovery-q__toggle"><input v-model="showAnswers" type="checkbox"/> 입력한 답 보기</label>
+              <label for="find-question">등록한 질문</label>
+              <select id="find-question" v-model="selectedQuestion" :disabled="busy">
+                <option disabled value="">질문을 선택해 주세요</option>
+                <option v-for="q in choiceQuestions" :key="q.id" :value="q.id">{{ q.label }}</option>
+              </select>
+            </div>
+            <div class="text-r">
+              <label for="find-answer">답</label>
+              <input id="find-answer" v-model="selectedAnswer" type="text" maxlength="50" autocomplete="off" :disabled="busy" placeholder="답을 입력해 주세요."/>
             </div>
 
             <p v-if="message" class="form-msg is-error" role="alert">{{ message }}</p>
@@ -109,10 +87,8 @@
 import TodoHeader from '../signup/TodoHeader.vue'
 import { showMessage } from '../../notify'
 import {
-  CHOICE_QUESTIONS, LEGACY_QUESTIONS, answerProblem, birthProblem, errorText, formatBirth, isOk, passwordProblem, postJson
+  CHOICE_QUESTIONS, answerProblem, birthProblem, errorText, formatBirth, isOk, passwordProblem, postJson
 } from './findPasswordApi'
-
-const EMPTY_LEGACY = () => ({ Q01: '', Q02: '', Q03: '' })
 
 export default {
   name: 'FindPasswordPage',
@@ -124,14 +100,10 @@ export default {
       userName: '',
       userBirth: '',
       birthTouched: false,
-      mode: 'one',
       choiceQuestions: CHOICE_QUESTIONS,
-      legacyQuestions: LEGACY_QUESTIONS,
       // 답·새 비밀번호는 메모리에만 둔다(주소·저장소·콘솔에 쓰지 않는다)
       selectedQuestion: '',
       selectedAnswer: '',
-      legacyAnswers: EMPTY_LEGACY(),
-      showAnswers: false,
       newPw: '',
       newPw2: '',
       message: '',
@@ -147,12 +119,6 @@ export default {
     }
   },
   watch: {
-    mode () {
-      this.selectedQuestion = ''
-      this.selectedAnswer = ''
-      this.legacyAnswers = EMPTY_LEGACY()
-      this.message = ''
-    },
     selectedQuestion () {
       this.selectedAnswer = ''
     }
@@ -165,7 +131,6 @@ export default {
   methods: {
     clearSecrets () {
       this.selectedAnswer = ''
-      this.legacyAnswers = EMPTY_LEGACY()
       this.newPw = ''
       this.newPw2 = ''
     },
@@ -179,20 +144,11 @@ export default {
       this.birthTouched = true
       const birth = birthProblem(this.userBirth)
       if (birth) return birth
-      if (this.mode === 'one') {
-        if (!this.choiceQuestions.some(q => q.id === this.selectedQuestion)) return '등록한 질문을 선택해 주세요.'
-        return answerProblem(this.selectedAnswer)
-      }
-      for (let i = 0; i < this.legacyQuestions.length; i += 1) {
-        const p = answerProblem(this.legacyAnswers[this.legacyQuestions[i].id])
-        if (p) return `질문 ${i + 1}: ${p}`
-      }
-      return ''
+      if (!this.choiceQuestions.some(q => q.id === this.selectedQuestion)) return '등록한 질문을 선택해 주세요.'
+      return answerProblem(this.selectedAnswer)
     },
     payload () {
-      const answers = this.mode === 'one'
-        ? [{ question_id: this.selectedQuestion, answer: this.selectedAnswer }]
-        : this.legacyQuestions.map(q => ({ question_id: q.id, answer: this.legacyAnswers[q.id] }))
+      const answers = [{ question_id: this.selectedQuestion, answer: this.selectedAnswer }]
       return { user_id: this.userId.trim(), user_name: this.userName.trim(), user_birth: this.userBirth, answers }
     },
     async verify () {
@@ -402,39 +358,6 @@ hr {
   color: #5c6579;
   font-size: 12px;
   margin-bottom: 12px;
-}
-.mode-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 22px;
-  flex-wrap: wrap;
-}
-.text-r .mode-option {
-  flex: 1 1 200px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 12px;
-  border: 1px solid #e5e9f0;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.text-r .mode-option.is-selected {
-  border-color: #2ec4b6;
-  background-color: #e8f8f6;
-}
-.text-r .mode-option input,
-.text-r .recovery-q__toggle input {
-  width: auto;
-  height: auto;
-  margin: 0;
-}
-.text-r .recovery-q__toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 18px;
 }
 .field-msg {
   display: block;

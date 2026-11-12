@@ -77,10 +77,7 @@
                 </div>
                 <div class="text-r">
                     <label for="recovery-answer">선택한 질문의 답 * 필수</label>
-                    <input id="recovery-answer" v-model="selectedAnswer" :type="showAnswers ? 'text' : 'password'" maxlength="50" autocomplete="off" :disabled="submitting" placeholder="답을 입력해 주세요."/>
-                </div>
-                <div class="text-r">
-                    <label class="recovery-q__toggle"><input v-model="showAnswers" type="checkbox" data-testid="signup-answer-toggle"/> 입력한 답 보기</label>
+                    <input id="recovery-answer" v-model="selectedAnswer" type="text" maxlength="50" autocomplete="off" :disabled="submitting" placeholder="답을 입력해 주세요."/>
                 </div>
 
                 <div class="text-r">
@@ -286,7 +283,6 @@ export default {
             questions: RECOVERY_QUESTIONS,
             selectedQuestion: '',
             selectedAnswer: '',
-            showAnswers: false,
             submitting: false,
             alive: true,
             isFirstStep: true
@@ -643,17 +639,6 @@ hr {
   color: #5c6579;
   font-size: 12px;
   margin-bottom: 12px;
-}
-.text-r .recovery-q__toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 18px;
-}
-.text-r .recovery-q__toggle input {
-  width: auto;
-  height: auto;
-  margin: 0;
 }
 @media (max-width: 640px) {
   .reg-box {
