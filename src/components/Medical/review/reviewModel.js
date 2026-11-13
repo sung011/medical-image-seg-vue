@@ -89,6 +89,15 @@ export function createDefaultReview() {
   }
 }
 
+export function normalizeUserRois(saved) {
+  if (!saved) return []
+  if (Array.isArray(saved.userRois) && saved.userRois.length) {
+    return saved.userRois.filter(Boolean)
+  }
+  if (saved.userRoi) return [saved.userRoi]
+  return []
+}
+
 export async function fetchSavedReview(reviewIdx, userIdx) {
   const params = new URLSearchParams({
     idx: String(reviewIdx),
@@ -123,6 +132,7 @@ export async function fetchSavedReview(reviewIdx, userIdx) {
     studyIdx: data.study_idx,
     imageSrc: publicAssetUrl(data.image),
     userRoi: null,
+    userRois: [],
     overlaySrc: '',
     type: data.type || '',
     sliceIndex: sliceIndex != null && sliceIndex >= 0 ? sliceIndex : null,
@@ -177,14 +187,14 @@ export function loadReviewFromStorage() {
       saved.sliceTotal != null && Number.isFinite(Number(saved.sliceTotal))
         ? Number(saved.sliceTotal)
         : null
+    const userRois = normalizeUserRois(saved)
     return {
       usingMock: false,
       grade: saved.gradeResult,
       // imageUrl: 서버가 대신 받아 주는 주소가 있으면 먼저 쓴다. 없으면 기존 경로
       imageSrc: saved.imageUrl || publicAssetUrl(saved.imagePath) || saved.imageDataUrl || '',
-      userRoi: saved.userRoi || null,
-      // 흉부는 그린 ROI를 모두 채점한다. 예전 저장값에는 없어서 userRoi 하나로 채운다
-      userRois: saved.userRois || (saved.userRoi ? [saved.userRoi] : []),
+      userRoi: userRois[0] || null,
+      userRois,
       overlaySrc:
         publicAssetUrl(saved.overlayPath) ||
         overlaySrcFromBase64(saved.gradeResult.overlay_png_base64),

@@ -82,7 +82,30 @@ export default {
   background: #fff;
   border-right: 1px solid #e6edf3;
   box-sizing: border-box;
-  min-height: 90vh;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+}
+
+@media (max-width: 800px) {
+  .learning-sidebar {
+    width: 100%;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid #e6edf3;
+    padding: 12px 12px 8px;
+  }
+
+  .learning-sidebar__nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex: 0 0 auto;
+    gap: 4px;
+  }
+
+  .learning-sidebar__help {
+    display: none;
+  }
 }
 
 .learning-sidebar__brand {

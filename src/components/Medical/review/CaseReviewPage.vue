@@ -39,7 +39,14 @@ import PageFrame from '../../main/PageFrame.vue'
 import ReviewResultPanel from './ReviewResultPanel.vue'
 import ReviewSummaryPanel from './ReviewSummaryPanel.vue'
 import {getUserSession} from '../../login/authSession'
-import { createDefaultReview, fetchLearnerReview, fetchSavedReview, loadReviewFromStorage, mapRetryProblem } from './reviewModel'
+import {
+  createDefaultReview,
+  fetchLearnerReview,
+  fetchSavedReview,
+  loadReviewFromStorage,
+  mapRetryProblem,
+  normalizeUserRois
+} from './reviewModel'
 
 export default {
   name: 'CaseReviewPage',
@@ -89,8 +96,9 @@ export default {
       this.usingMock = saved.usingMock
       this.grade = saved.grade
       this.imageSrc = saved.imageSrc
-      this.userRoi = saved.userRoi
-      this.userRois = saved.userRois || (saved.userRoi ? [saved.userRoi] : [])
+      const rois = normalizeUserRois(saved)
+      this.userRois = rois
+      this.userRoi = rois[0] || null
       this.overlaySrc = saved.overlaySrc
       this.type = saved.type || this.$route.query.type || ''
       this.sliceIndex = saved.sliceIndex

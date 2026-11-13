@@ -30,8 +30,8 @@
               :style="shapeStyle(answerShape)"
           />
           <div
-              v-for="(roi, i) in shownUserRois"
-              :key="'user-' + i"
+              v-for="(roi, index) in displayUserRois"
+              :key="'user-roi-' + index"
               class="shape user"
               :class="roi.type"
               :style="shapeStyle(roi)"
@@ -101,10 +101,9 @@ export default {
       type: Object,
       default: null
     },
-    // 흉부는 ROI가 여러 개다. 비어 있으면 userRoi 하나를 그린다
     userRois: {
       type: Array,
-      default: () => []
+      default: null
     },
     grade: {
       type: Object,
@@ -133,6 +132,12 @@ export default {
     }
   },
   computed: {
+    displayUserRois() {
+      if (Array.isArray(this.userRois) && this.userRois.length) {
+        return this.userRois.filter(Boolean)
+      }
+      return this.userRoi ? [this.userRoi] : []
+    },
     resultLabel() {
       return formatResult(this.grade.result)
     },
@@ -179,10 +184,6 @@ export default {
         Array.isArray(this.grade.ai_targets) &&
         this.grade.ai_targets.length > 0
       )
-    },
-    shownUserRois() {
-      if (this.userRois && this.userRois.length) return this.userRois
-      return this.userRoi ? [this.userRoi] : []
     },
     // 흉부 의심 부위별 결과 한 줄 (예: 의심 부위 2곳 중 1곳을 찾았습니다.)
     regionText() {

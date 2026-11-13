@@ -35,6 +35,12 @@
         </button>
       </form>
 
+      <div class="login-form__finds">
+        <router-link class="login-form__find" to="/find-id">아이디 찾기</router-link>
+        <span class="login-form__find-sep" aria-hidden="true">|</span>
+        <router-link class="login-form__find" to="/find-password">비밀번호 찾기</router-link>
+      </div>
+
       <div class="login-form__divider" role="separator">
         <span>또는</span>
       </div>
@@ -204,6 +210,31 @@ export default {
 }
 
 .login-form__signup:hover {
+  text-decoration: underline;
+}
+
+.login-form__finds {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-form__find-sep {
+  color: #d7dde8;
+  font-size: 12px;
+}
+
+.login-form__find {
+  display: inline-block;
+  color: #5c6579;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.login-form__find:hover {
+  color: #5ab2b2;
   text-decoration: underline;
 }
 
