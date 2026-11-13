@@ -45,13 +45,31 @@
             </li>
             <li>
               <span class="swatch answer"></span>
-              정답 병변
+              {{ answerLabel }}
+            </li>
+            <!-- 정답이 데이터셋(의사) 박스일 때 AI가 찾은 부위는 참고로만 알린다 -->
+            <li v-if="hasAiReference">
+              <span class="swatch ai"></span>
+              AI가 찾은 부위 (참고)
             </li>
           </ul>
         </template>
       </XrayViewer>
       <div class="footer-hint">
       <p class="feedback">{{ feedbackText }}</p>
+      <!-- 틀린 이유 (서버가 내 ROI와 정답 부위를 비교해 만든 문장) -->
+      <ul v-if="tips.length" class="tips">
+        <li v-for="(tip, i) in tips" :key="'tip-' + i">{{ tip }}</li>
+      </ul>
+      <!-- 맞은 정도 한 줄 (서버가 만든 문장. 숫자만 말한다) -->
+      <p v-if="isThorax && grade.metrics_text" class="metrics-note">{{ grade.metrics_text }}</p>
+      <!-- 정답 표시는 의사 한 사람의 표시라 위치는 믿되 크기는 참고만. 채점 기준이 AI면 그렇다고 밝힌다 -->
+      <p v-if="answerWord === '정답 부위' && isDataset" class="answer-note">
+        색칠된 {{ answerWord }}는 의사가 표시한 위치예요. 크기는 의사마다 차이가 있어 참고로 보세요.
+      </p>
+      <p v-else-if="answerWord === '정답 부위'" class="answer-note">
+        이번 채점은 AI가 찾은 부위를 기준으로 했어요. 색칠된 곳은 의사가 표시한 정답이 아니라 AI가 찾은 위치이니 참고로 보세요.
+      </p>
       <ul v-if="kneeFindings.length" class="finding-list">
         <li v-for="item in kneeFindings" :key="'knee-' + (item.label || item.label_ko)">
           {{ findingLine(item) }}
@@ -134,9 +152,50 @@ export default {
       }
       return `슬라이스 ${current}`
     },
+    isThorax() {
+      return Boolean(this.grade.classification && this.grade.classification.task === 'thorax')
+    },
+    // 틀린 이유 목록. 흉부만 보여 준다 (뇌 CT도 feedback을 주지만 그 화면은 바꾸지 않는다)
+    tips() {
+      if (!this.isThorax) return []
+      return Array.isArray(this.grade.feedback) ? this.grade.feedback : []
+    },
+    // 흉부는 정답이 소견이라 "정답 부위", 그 밖에는 "정답 병변"
+    answerWord() {
+      return this.isThorax ? '정답 부위' : '정답 병변'
+    },
+    // 받침에 맞춘 조사 (부위를/병변을, 부위와/병변과)
+    answerObj() {
+      return this.answerWord === '정답 부위' ? '정답 부위를' : '정답 병변을'
+    },
+    answerWith() {
+      return this.answerWord === '정답 부위' ? '정답 부위와' : '정답 병변과'
+    },
+    // 채점 기준이 데이터셋(전문의) 박스인지. 아니면 AI가 찾은 부위가 기준이다
+    isDataset() {
+      return this.grade.target_source === 'dataset'
+    },
+    answerLabel() {
+      return this.grade.target_source === 'ai' ? 'AI가 찾은 부위 (참고)' : this.answerWord
+    },
+    hasAiReference() {
+      return (
+        this.grade.target_source === 'dataset' &&
+        Array.isArray(this.grade.ai_targets) &&
+        this.grade.ai_targets.length > 0
+      )
+    },
+    // 흉부 의심 부위별 결과 한 줄 (예: 의심 부위 2곳 중 1곳을 찾았습니다.)
+    regionText() {
+      const total = this.grade.target_count
+      if (this.usingMock || !total) return ''
+      const found = this.grade.found_count || 0
+      const wide = this.grade.too_wide ? ' 다만 그린 범위가 의심 부위보다 많이 넓습니다.' : ''
+      return ` 의심 부위 ${total}곳 중 ${found}곳을 찾았습니다.${wide}`
+    },
     feedbackText() {
       if (this.usingMock) {
-        return '정답 병변을 부분적으로 포함했으나 범위가 정답보다 넓습니다. 정상 폐실질 및 심 음영을 확인해주세요.'
+        return `${this.answerObj} 부분적으로 포함했으나 범위가 정답보다 넓습니다. 정상 폐실질 및 심 음영을 확인해주세요.`
       }
       const task = this.grade.classification && this.grade.classification.task
       const graded = this.grade.result === '정답' || this.grade.result === '부분정답' || this.grade.result === '오답'
@@ -148,13 +207,14 @@ export default {
         return `뇌 MRI로 판독했습니다. 가장 높은 소견은 ${name}입니다. 뇌 CT 출혈 모델은 사용하지 않습니다.`
       }
       const sliceHint = this.sliceLabel ? ` (${this.sliceLabel})` : ''
+      const regions = this.regionText
       if (this.grade.result === '정답') {
-        return `정답 병변을 잘 포함했습니다. 선택한 범위가 실제 이상 부위와 대체로 일치합니다.${sliceHint}`
+        return `${this.answerObj} 잘 포함했습니다. 선택한 범위가 실제 이상 부위와 대체로 일치합니다.${regions}${sliceHint}`
       }
       if (this.grade.result === '부분정답') {
-        return `정답 병변을 부분적으로 포함했으나 범위가 정답과 완전히 같지는 않습니다. 색칠된 위치와 비교해 보세요.${sliceHint}`
+        return `${this.answerObj} 부분적으로 포함했으나 범위가 정답과 완전히 같지는 않습니다. 색칠된 위치와 비교해 보세요.${regions}${sliceHint}`
       }
-      return `선택한 영역이 정답 병변과 거의 겹치지 않습니다. 색칠된 정답 위치를 다시 확인해 주세요.${sliceHint}`
+      return `선택한 영역이 ${this.answerWith} 거의 겹치지 않습니다. 색칠된 정답 위치를 다시 확인해 주세요.${regions}${sliceHint}`
     },
     kneeFindings() {
       if (!this.grade.classification || this.grade.classification.task !== 'knee-mri') return []
@@ -380,5 +440,34 @@ export default {
 }
 .swatch.answer {
   background: #14b8a6;
+}
+.swatch.ai {
+  border: 2px solid #4073ff;
+  border-radius: 3px;
+  background: transparent;
+}
+.tips {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  list-style: none;
+  border-radius: 8px;
+  background: #fff7ed;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #9a3412;
+}
+.tips li + li {
+  margin-top: 2px;
+}
+.metrics-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f766e;
+}
+.answer-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
 }
 </style>

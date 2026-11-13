@@ -7,6 +7,7 @@ import CaseSolvingPage from '../components/Medical/CaseSolvingPage.vue'
 import CaseReviewPage from '../components/Medical/review/CaseReviewPage.vue'
 import indexPage from '../components/main/indexPage.vue'
 import LearningSetupPage from '../components/learning/LearningSetupPage.vue'
+import CaseListPage from '../components/learning/CaseListPage.vue'
 import ScreenAnalyzePage from '../components/analyze/ScreenAnalyzePage.vue'
 import WrongNotePage from '../components/note/WrongNotePage.vue'
 import LearningHistoryPage from '../components/history/LearningHistoryPage.vue'
@@ -85,6 +86,11 @@ const router = createRouter({
         {
             path: '/learning',
             component: LearningSetupPage,
+            beforeEnter: requireSession
+        },
+        {
+            path: '/cases',
+            component: CaseListPage,
             beforeEnter: requireSession
         },
         {

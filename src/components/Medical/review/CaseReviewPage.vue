@@ -171,8 +171,9 @@ export default {
     onNextProblem() {
       this.$router.push({ path: '/medical', query: this.reviewQuery() })
     },
+    // 풀이완료: 같은 부위·영상의 케이스 목록으로 돌아가 다른 문제를 고른다
     onDone() {
-      this.$router.push('/main')
+      this.$router.push({path: '/cases', query: this.reviewQuery()})
     }
   }
 }
