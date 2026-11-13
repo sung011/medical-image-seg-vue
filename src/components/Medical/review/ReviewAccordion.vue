@@ -1,10 +1,10 @@
 <template>
   <section class="accordion">
-    <button v-if="!hideTitle" type="button" class="acc-title" @click="$emit('toggle')">
+    <button type="button" class="acc-title" @click="$emit('toggle')">
       {{ title }}
       <i class="fa" :class="open ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
     </button>
-    <div v-show="hideTitle || open" class="acc-body">
+    <div v-show="open" class="acc-body">
       <slot />
     </div>
   </section>
@@ -21,11 +21,6 @@ export default {
     open: {
       type: Boolean,
       default: true
-    },
-    // 탭 안에서 쓸 때는 탭 이름과 겹치는 제목 줄을 숨기고 내용만 보여 준다
-    hideTitle: {
-      type: Boolean,
-      default: false
     }
   },
   emits: ['toggle']

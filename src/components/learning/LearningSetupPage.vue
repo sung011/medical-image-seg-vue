@@ -66,7 +66,7 @@ export default {
     onStart() {
       if (!this.canStart) return
       this.$router.push({
-        path: '/cases',
+        path: '/medical',
         query: {
           region: this.selectedRegion,
           type: this.selectedModality
