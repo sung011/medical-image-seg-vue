@@ -84,8 +84,7 @@ export function createDefaultReview() {
     usingMock: true,
     type: '',
     sliceIndex: null,
-    sliceTotal: null,
-    reviewIdx: null
+    sliceTotal: null
   }
 }
 
@@ -191,8 +190,7 @@ export function loadReviewFromStorage() {
     return {
       usingMock: false,
       grade: saved.gradeResult,
-      // imageUrl: 서버가 대신 받아 주는 주소가 있으면 먼저 쓴다. 없으면 기존 경로
-      imageSrc: saved.imageUrl || publicAssetUrl(saved.imagePath) || saved.imageDataUrl || '',
+      imageSrc: publicAssetUrl(saved.imagePath) || saved.imageDataUrl || '',
       userRoi: userRois[0] || null,
       userRois,
       overlaySrc:
@@ -200,9 +198,7 @@ export function loadReviewFromStorage() {
         overlaySrcFromBase64(saved.gradeResult.overlay_png_base64),
       type: saved.type || '',
       sliceIndex,
-      sliceTotal,
-      // 서버에 저장된 풀이 기록 번호
-      reviewIdx: saved.reviewIdx ?? saved.gradeResult.review_idx ?? null
+      sliceTotal
     }
   } catch (e) {
     return null

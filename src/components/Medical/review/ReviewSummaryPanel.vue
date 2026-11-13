@@ -2,9 +2,6 @@
   <aside class="summary-col">
     <h2>결과 요약</h2>
     <p v-if="sliceLabel" class="slice-meta">제출 슬라이스 · {{ sliceLabel }}</p>
-    <!-- 흉부는 탭으로 나눈 전용 요약을 쓴다 -->
-    <ReviewThoraxSummary v-if="isThorax" :grade="grade" />
-    <template v-else>
     <div class="stat-grid">
       <article class="stat-card">
         <span class="stat-icon teal"><i class="fa fa-check"></i></span>
@@ -86,17 +83,15 @@
         </li>
       </ul>
     </ReviewAccordion>
-    </template>
   </aside>
 </template>
 
 <script>
 import ReviewAccordion from './ReviewAccordion.vue'
-import ReviewThoraxSummary from './ReviewThoraxSummary.vue'
 
 export default {
   name: 'ReviewSummaryPanel',
-  components: { ReviewAccordion, ReviewThoraxSummary },
+  components: { ReviewAccordion },
   props: {
     grade: {
       type: Object,
@@ -140,9 +135,6 @@ export default {
     },
     readingTask() {
       return (this.grade.classification && this.grade.classification.task) || ''
-    },
-    isThorax() {
-      return this.readingTask === 'thorax'
     },
     findingsTitle() {
       if (this.readingTask === 'thorax') return '흉부 소견'

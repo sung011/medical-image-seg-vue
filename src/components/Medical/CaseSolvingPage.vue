@@ -749,13 +749,7 @@ export default {
       }
     },
     onGoList() {
-      this.$router.push({
-        path: '/cases',
-        query: {
-          region: this.$route.query.region || 'brain',
-          type: this.$route.query.type || 'CT'
-        }
-      })
+      showMessage('케이스 목록 화면은 아직 연결 전입니다.')
     }
   }
 }
