@@ -39,7 +39,7 @@
               <button type="button" class="secondary" :disabled="!hasRoi" @click="onClear">박스 지우기</button>
               <button type="button" :disabled="!hasRoi || analyzing" @click="onAnalyze">선택 영역 분석</button>
               <button
-                  v-if="target === 'brain'"
+                  v-if="target === 'brain' || target === 'abdomen'"
                   type="button"
                   class="secondary"
                   :class="{ 'is-loading': explaining }"
@@ -159,8 +159,9 @@
             <div class="disclaimer">
               ※ 본 화면은 <strong>가능성 검증용 프로토타입</strong>입니다.
               실제 의료 진단이 아니며, 최종 판단은 의사에게 있습니다.
-              분석은 고른 대상(뇌 CT, 흉부 X-ray, 뇌 MRI, 무릎 MRI) API를 사용합니다.
-              한국어 판독은 뇌 CT의 MedGemma 해설만 있습니다.
+              분석은 고른 대상(뇌 CT, 흉부 X-ray, 복부 CT, 뇌 MRI, 무릎 MRI) API를 사용합니다.
+              복부 CT는 장기 위치 학습용이며 질환 진단이 아닙니다.
+              한국어 판독은 뇌 CT·복부 CT의 MedGemma 해설이 있습니다.
             </div>
           </div>
         </section>
@@ -172,6 +173,7 @@
 <script>
 import PageFrame from '../main/PageFrame.vue'
 import {
+  analyzeAbdomenScreen,
   analyzeBrainMri,
   analyzeKneeScreen,
   analyzeScreenRoi,
@@ -179,6 +181,7 @@ import {
   analyzeThoraxScreen,
   brainMriSequences,
   cropRect,
+  explainAbdomenScreenRoi,
   explainScreenRoi,
   kneePlanes,
   kneeScopes,
@@ -490,6 +493,7 @@ export default {
     },
     runAnalysis(blob) {
       if (this.target === 'thorax') return analyzeThoraxScreen(blob)
+      if (this.target === 'abdomen') return analyzeAbdomenScreen(blob)
       if (this.target === 'brain-mri') return analyzeBrainMri(blob, this.mriSequence)
       if (this.target === 'knee') return analyzeKneeScreen(blob, this.kneePlane, this.kneeScope)
       return analyzeScreenRoi(blob)
@@ -508,7 +512,9 @@ export default {
         }
       })
       try {
-        const result = await explainScreenRoi(this.lastRoiBlob, this.analysis)
+        const result = this.analyzedTarget === 'abdomen'
+            ? await explainAbdomenScreenRoi(this.lastRoiBlob, this.analysis)
+            : await explainScreenRoi(this.lastRoiBlob, this.analysis)
         this.explainSections = parseReport(result.explanation)
         this.explainLoading = false
         this.step = 3

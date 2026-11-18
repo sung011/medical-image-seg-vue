@@ -145,6 +145,9 @@ export default {
       }
       if (this.grade.result === '판독') {
         const name = (this.grade.classification && this.grade.classification.top_label_ko) || '소견'
+        if (task === 'abdomen') {
+          return `복부 CT로 장기 위치를 판독했습니다. 가장 높은 장기는 ${name}입니다. 질환 진단이 아니라 장기 위치 학습용입니다.`
+        }
         return `뇌 MRI로 판독했습니다. 가장 높은 소견은 ${name}입니다. 뇌 CT 출혈 모델은 사용하지 않습니다.`
       }
       const sliceHint = this.sliceLabel ? ` (${this.sliceLabel})` : ''

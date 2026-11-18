@@ -123,7 +123,7 @@
 - [x] `st_image`가 경로 배열(여러 장)이면 MRI·CT 모두 슬라이더·휠로 슬라이스를 넘긴다. 한 장이면 슬라이더 없이 그 장만 쓴다
 - [x] 풀이 화면은 그 문제의 슬라이스(한 장이면 1장)를 모두 받은 뒤에 뷰어를 연다. 경로는 `/stylesheets`이면 그 파일을 한꺼번에 받고, 막히면 `GET /learning/problem/{번호}/image?slice_index=`로 최대 6장씩 받는다. 다 받기 전에는 돌아가는 표시와 "로딩중", 받은 장 수(예: 3 / 13)를 보여 준다. 일정 시간으로 끄지 않는다. 받은 장은 그 문제를 보는 동안 캐시에 둔다
 - [x] ROI 도구: 원, 박스, 지우기. 드래그로 영역을 추가한다
-- [x] 제출 판독은 부위와 영상 종류로 고른다. 뇌 CT와 흉부 X-ray는 `POST /learning/roi-grade`(흉부는 서버가 흉부 모델로 채점), 뇌 MRI는 `POST /api/v1/analyze/brain-mri`, 무릎 MRI는 박스로 `POST /learning/roi-grade/knee`다. 무릎은 이미지 파일을 보내지 않고 `study_idx`, `roi_type=box`, `x`, `y`, `width`, `height`, `slice_index`(0부터), 로그인한 회원 `user_idx`(세션이 없으면 1)만 보낸다. `result`가 정답·부분정답·오답이면 그 값을 그대로 쓰고, `iou`는 정확도, `recall`은 포함률, `reference_bbox`는 정답 박스다. `reading`이 없을 때만 미채점 문구를 쓴다. 복부 등 모델이 없는 조합은 뇌 API를 호출하지 않고 안내만 한다. 여러 ROI면 그린 영역을 모두 `userRois`에 저장하고, 채점은 전체를 감싼 박스로 한 번 보낸다. ROI가 하나이고 원이면 원으로 보낸다
+- [x] 제출 판독은 부위와 영상 종류로 고른다. 뇌 CT·흉부 X-ray·복부 CT는 `POST /learning/roi-grade`다. 흉부는 흉부 모델, 복부(st_part=3)는 복부 장기 검출 모델로 채점하고 `classification.task`는 `abdomen`, `recall`은 포함률, `iou`는 ROI 정확도다. 뇌 MRI는 `POST /api/v1/analyze/brain-mri`, 무릎 MRI는 박스로 `POST /learning/roi-grade/knee`다. 무릎은 이미지 파일을 보내지 않고 `study_idx`, `roi_type=box`, `x`, `y`, `width`, `height`, `slice_index`(0부터), 로그인한 회원 `user_idx`(세션이 없으면 1)만 보낸다. `result`가 정답·부분정답·오답이면 그 값을 그대로 쓰고, `reference_bbox`/`abnormality_bbox`는 정답 박스다. `reading`이 없을 때만 미채점 문구를 쓴다. 지원하지 않는 부위·영상 조합은 안내만 한다. 여러 ROI면 그린 영역을 모두 `userRois`에 저장하고, 채점은 전체를 감싼 박스로 한 번 보낸다. ROI가 하나이고 원이면 원으로 보낸다
 - [x] 여러 장일 때 제출은 `slice_index`(0-based)와 `image_path`를 함께 보내고, 한 장이면 생략한다
 - [x] 채점 결과와 사용자 ROI(여러 개면 `userRois`)·슬라이스 정보를 `medlens.review`에 저장하고 `/medical/review`로 이동한다
 - [x] 오른쪽 용어 사전은 `GET /glossary/search`만 쓴다. 검색어가 없으면 주소 부위의 한글 이름을 `q`에 넣고, 검색어가 있으면 그 글자만 `q`에 넣는다. 이름·설명에 나온 뇌·심장·폐·흉부·복부·무릎으로 거른다. 항목은 한글 이름 옆 괄호에 영어 이름, 한글 설명 아래에 영어 설명, 아래에 그 부위 표시를 둔다. 오른쪽 칸은 300px에서 360px이고, 영상은 남은 가로를 쓴다
@@ -141,7 +141,7 @@
 - [x] 저장된 영상, 사용자 ROI(여러 개면 모두), 오버레이, 판정(정답/부분정답/오답, 뇌 MRI는 판독)을 보여 준다. 화면은 풀이 화면과 같이 위 정보 줄, 왼쪽 영상, 오른쪽 요약이다. 오른쪽 칸은 300px에서 360px이고 영상은 남은 가로를 쓴다. 좁은 화면에서는 영상 아래에 요약이 이어진다. 리뷰 영상은 풀이와 같이 확대, 축소, 기본크기, 팬, 밝기, 리셋을 쓴다. 정보 줄에 판정과 "다음 문제 가져오기" 또는 "다시 제출", "풀이완료"를 둔다. 무릎 MRI의 정답·부분정답·오답 배지와 문구는 뇌 CT와 같다. `reference_bbox`가 있으면 정답 박스로 그린다
 - [x] 결과 요약은 추정 병명과 포함률만 보여 준다. ROI 정확도 칸은 없다. `iou`는 저장만 하고 이 화면에 그리지 않는다
 - [x] 여러 장에서 제출했으면 슬라이스 번호(예: 슬라이스 43 / 190)를 결과·요약에 보여 준다
-- [x] 결과 요약의 소견 제목은 채점 `classification.task`를 따른다. `hemorrhage`는 출혈(ICH)과 germinoma, `thorax`는 흉부 소견, `brain-mri`는 뇌 MRI, `knee`와 `knee-mri`는 무릎 MRI다. `knee-mri`는 `label_ko`, `verdict`, `prob`를 목록으로 보여주고, `status`가 `not_evaluated`이면 점수 대신 `reason`을 보여 준다. 무릎의 정답·부분정답·오답 문구는 뇌 CT와 같다
+- [x] 결과 요약의 소견 제목은 채점 `classification.task`를 따른다. `hemorrhage`는 출혈(ICH)과 germinoma, `thorax`는 흉부 소견, `abdomen`은 복부 장기, `brain-mri`는 뇌 MRI, `knee`와 `knee-mri`는 무릎 MRI다. `knee-mri`는 `label_ko`, `verdict`, `prob`를 목록으로 보여주고, `status`가 `not_evaluated`이면 점수 대신 `reason`을 보여 준다. 무릎·복부의 정답·부분정답·오답 문구와 포함률은 뇌 CT와 같다
 - [x] 제출은 `review_node`에 포함률(`rn_recall`), ROI 정확도(`rn_iou`), 위치 요약(`rn_overlay_summary`), 출혈·germinoma 소견(`rn_findings`), MRI 슬라이스(`rn_slice_index`)를 남긴다
 - [x] 결과 요약의 병명 해설은 채점 응답의 `learning_note`가 있으면 그 이름·요약·소견·함정을 보여 준다. 흉부 채점은 같은 `POST /learning/roi-grade`가 소견마다 해설을 붙인다
 - [x] 주소에 `review`가 있으면 채점 이미지는 `GET /learning/review?idx=&user_idx=`로 보고, 다시 풀 수 있는지는 `GET /learning/reviews/{번호}?user_idx=`의 `problem`으로 본다. `problem`이 없으면 "다시 제출"을 숨긴다. 채점 이미지 응답이 없으면 저장값을 쓰고, 저장값도 없으면 화면용 기본 채점 데이터를 쓴다. 예전 제출은 요약 칸이 비어 포함률을 `—`로 둔다
@@ -171,6 +171,6 @@
 
 - [x] 로그인 없이 연다. 상단 헤더는 다른 페이지와 같은 `MainHeader`다. 왼쪽은 화면 공유·ROI, 오른쪽은 분석 결과다
 - [x] "화면 공유 시작"은 브라우저 화면 공유를 받고, 휠로 스크롤한 뒤 드래그로 네모 박스를 그린다
-- [x] "선택 영역 분석"은 고른 대상으로 자른 이미지를 보낸다. 뇌 CT는 `POST ${API_BASE}/api/v1/analyze/screen-roi`와 출혈·germinoma 확률, 흉부 X-ray는 모델 준비 `GET ${API_BASE}/api/v1/thorax/health` 뒤 `POST ${API_BASE}/api/v1/thorax/analyze/screen-roi`(판독문 없음), 뇌 MRI는 `GET ${API_BASE}/api/v1/brain-mri/health` 뒤 `POST ${API_BASE}/api/v1/analyze/brain-mri`(PNG/JPEG, 시퀀스 선택), 무릎 MRI는 촬영면·범위와 함께 `POST ${API_BASE}/api/v1/knee/screen-roi`다. 오른쪽 결과 칸은 그 안에서 스크롤한다
-- [x] "AI 해설 (MedGemma)"는 뇌 CT 분석이 끝난 뒤에만 켜지고, `POST ${API_BASE}/api/v1/analyze/screen-roi/explain`으로 한국어 판독문을 받아 보여 준다
+- [x] "선택 영역 분석"은 고른 대상으로 자른 이미지를 보낸다. 뇌 CT는 `POST ${API_BASE}/api/v1/analyze/screen-roi`와 출혈·germinoma 확률, 흉부 X-ray는 모델 준비 `GET ${API_BASE}/api/v1/thorax/health` 뒤 `POST ${API_BASE}/api/v1/thorax/analyze/screen-roi`(판독문 없음), 복부 CT는 모델·판독문 상태 `GET ${API_BASE}/api/v1/abdomen/health` 뒤 `POST ${API_BASE}/api/v1/abdomen/analyze/screen-roi`로 장기 박스·점수·overlay를 받는다(`classification.task`는 `abdomen`, 장기 점수=그 장기 박스 최고 신뢰도, 질환 진단이 아니라 장기 위치 학습용), 뇌 MRI는 `GET ${API_BASE}/api/v1/brain-mri/health` 뒤 `POST ${API_BASE}/api/v1/analyze/brain-mri`(PNG/JPEG, 시퀀스 선택), 무릎 MRI는 촬영면·범위와 함께 `POST ${API_BASE}/api/v1/knee/screen-roi`다. 오른쪽 결과 칸은 그 안에서 스크롤한다
+- [x] "AI 해설 (MedGemma)"는 뇌 CT·복부 CT 분석이 끝난 뒤에 켜진다. 뇌 CT는 `POST ${API_BASE}/api/v1/analyze/screen-roi/explain`, 복부 CT는 `POST ${API_BASE}/api/v1/abdomen/analyze/screen-roi/explain`으로 한국어 판독문([검사]~[면책])을 받아 보여 준다
 - [x] "박스 지우기"는 공유를 유지한 채 박스와 결과를 지우고, "공유 종료"는 공유와 결과를 처음 상태로 되돌린다

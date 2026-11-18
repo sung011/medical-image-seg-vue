@@ -19,6 +19,7 @@ export function readingKind(region, type) {
   if (part === 'brain' && modal === 'ct') return 'brain-ct'
   if (part === 'brain' && modal === 'mri') return 'brain-mri'
   if (part === 'chest' && (modal === 'x-ray' || modal === 'xray')) return 'chest-xray'
+  if (part === 'abdomen' && modal === 'ct') return 'abdomen-ct'
   if (part === 'knee' && modal === 'mri') return 'knee-mri'
   return 'none'
 }

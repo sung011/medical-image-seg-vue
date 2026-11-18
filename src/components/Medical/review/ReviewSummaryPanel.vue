@@ -138,6 +138,7 @@ export default {
     },
     findingsTitle() {
       if (this.readingTask === 'thorax') return '흉부 소견'
+      if (this.readingTask === 'abdomen') return '복부 장기'
       if (this.readingTask === 'brain-mri') return '뇌 MRI'
       if (this.readingTask === 'knee' || this.readingTask === 'knee-mri') return '무릎 MRI'
       return '출혈 (ICH)'
@@ -149,7 +150,7 @@ export default {
       return this.grade.germinoma || null
     },
     ichFindings() {
-      if (this.readingTask === 'thorax' || this.readingTask === 'brain-mri' || this.readingTask === 'knee' || this.readingTask === 'knee-mri') {
+      if (this.readingTask === 'thorax' || this.readingTask === 'abdomen' || this.readingTask === 'brain-mri' || this.readingTask === 'knee' || this.readingTask === 'knee-mri') {
         return []
       }
       return this.primaryFindings
@@ -175,12 +176,13 @@ export default {
       return hasBatchim ? '으로' : '로'
     },
     diseaseName() {
-      if (this.readingTask === 'thorax' || this.readingTask === 'brain-mri' || this.readingTask === 'knee' || this.readingTask === 'knee-mri') {
+      if (this.readingTask === 'thorax' || this.readingTask === 'abdomen' || this.readingTask === 'brain-mri' || this.readingTask === 'knee' || this.readingTask === 'knee-mri') {
         const top =
           (this.grade.classification && this.grade.classification.top_label_ko) ||
           this.grade.disease ||
           ''
         if (top) return top
+        if (this.readingTask === 'abdomen') return '장기 없음'
         if (this.readingTask === 'knee' || this.readingTask === 'knee-mri') return 'ACL'
       }
       const ich =
@@ -227,6 +229,14 @@ export default {
           '위치와 범위를 정답 표시·오버레이와 비교해 보세요.'
         ]
       }
+      if (this.readingTask === 'abdomen') {
+        const lines = [
+          `${this.diseaseName}${this.topicParticle} 추정되는 장기입니다. 질환 진단이 아니라 장기 위치 학습용입니다.`
+        ]
+        if (this.grade.overlay_summary) lines.push(this.grade.overlay_summary)
+        if (this.grade.disclaimer) lines.push(this.grade.disclaimer)
+        return lines
+      }
       const lines = [
         `${this.diseaseName}${this.topicParticle} 추정되는 이상 부위입니다. 위치와 범위를 정답 표시와 비교해 보세요.`
       ]
@@ -267,7 +277,7 @@ export default {
         ]
       }
       const chips = []
-      const named = (this.readingTask === 'thorax' || this.readingTask === 'brain-mri' || this.readingTask === 'knee-mri')
+      const named = (this.readingTask === 'thorax' || this.readingTask === 'abdomen' || this.readingTask === 'brain-mri' || this.readingTask === 'knee-mri')
         ? this.primaryFindings
         : this.ichFindings
       named.slice(0, 4).forEach((item) => {

@@ -699,7 +699,7 @@ export default {
       const type = this.$route.query.type || 'CT'
       const kind = readingKind(region, type)
       if (kind === 'none') {
-        showMessage('이 부위와 영상 종류에는 판독 모델이 없습니다. 뇌 CT, 뇌 MRI, 흉부 X-ray, 무릎 MRI만 판독합니다.', 'warning')
+        showMessage('이 부위와 영상 종류에는 판독 모델이 없습니다. 뇌 CT, 뇌 MRI, 흉부 X-ray, 복부 CT, 무릎 MRI만 판독합니다.', 'warning')
         return
       }
       if (kind === 'knee-mri' && this.rois.some((roi) => roi.type !== 'box')) {

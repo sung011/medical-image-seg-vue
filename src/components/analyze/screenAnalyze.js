@@ -2,7 +2,7 @@ import { API_BASE } from '../../apiBase'
 
 const SCREEN_ROI_API = `${API_BASE}/api/v1/analyze/screen-roi`
 const EXPLAIN_API = `${API_BASE}/api/v1/analyze/screen-roi/explain`
-const HEAD_RE = /^【(.+?)】\s*(.*)$/
+const HEAD_RE = /^(?:【(.+?)】|\[(.+?)\])\s*(.*)$/
 
 function errorMessage(data, fallback) {
   if (data && typeof data.detail === 'string') return data.detail
@@ -68,6 +68,9 @@ function reportBlocks(lines) {
 
 const THORAX_HEALTH_API = `${API_BASE}/api/v1/thorax/health`
 const THORAX_SCREEN_API = `${API_BASE}/api/v1/thorax/analyze/screen-roi`
+const ABDOMEN_HEALTH_API = `${API_BASE}/api/v1/abdomen/health`
+const ABDOMEN_SCREEN_API = `${API_BASE}/api/v1/abdomen/analyze/screen-roi`
+const ABDOMEN_EXPLAIN_API = `${API_BASE}/api/v1/abdomen/analyze/screen-roi/explain`
 const BRAIN_MRI_API = `${API_BASE}/api/v1/analyze/brain-mri`
 const KNEE_SCREEN_API = `${API_BASE}/api/v1/knee/screen-roi`
 
@@ -98,6 +101,7 @@ export function analyzeTargets() {
   return [
     { id: 'brain', label: '뇌 CT' },
     { id: 'thorax', label: '흉부 X-ray' },
+    { id: 'abdomen', label: '복부 CT' },
     { id: 'brain-mri', label: '뇌 MRI' },
     { id: 'knee', label: '무릎 MRI' }
   ]
@@ -129,6 +133,30 @@ export async function analyzeThoraxScreen(blob) {
   form.append('modality', 'xray')
   form.append('include_overlay', 'true')
   return postForm(THORAX_SCREEN_API, form, '흉부 분석 오류')
+}
+
+export async function analyzeAbdomenScreen(blob) {
+  await assertReady(ABDOMEN_HEALTH_API, 'models_loaded', '복부 모델이 준비되지 않았습니다.')
+  const form = new FormData()
+  form.append('image', blob, 'roi.png')
+  form.append('modality', 'ct')
+  form.append('include_overlay', 'true')
+  return postForm(ABDOMEN_SCREEN_API, form, '복부 분석 오류')
+}
+
+export async function explainAbdomenScreenRoi(blob, analysis) {
+  const form = new FormData()
+  form.append('image', blob, 'roi.png')
+  form.append('probs_json', JSON.stringify(analysis.classification.probs))
+  if (analysis.overlay_png_base64) {
+    form.append('overlay_png_base64', analysis.overlay_png_base64)
+  }
+  const response = await fetch(ABDOMEN_EXPLAIN_API, { method: 'POST', body: form })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(errorMessage(data, `복부 해설 API 오류 (${response.status})`))
+  }
+  return data
 }
 
 export async function analyzeBrainMri(blob, sequence) {
@@ -167,31 +195,41 @@ function findingView(item) {
   }
 }
 
-function presentScreen(data, thorax) {
+function presentScreen(data, kind) {
   const top = data.classification || {}
+  const thorax = kind === 'thorax'
+  const abdomen = kind === 'abdomen'
   let title = thorax
     ? `흉부 최상위: ${top.top_label_ko || '소견 없음'}`
-    : `출혈 최상위: ${top.top_label_ko || '소견 없음'}`
-  if (!thorax && data.germinoma) {
+    : abdomen
+      ? `복부 최상위: ${top.top_label_ko || '장기 없음'}`
+      : `출혈 최상위: ${top.top_label_ko || '소견 없음'}`
+  if (!thorax && !abdomen && data.germinoma) {
     title += ` · germinoma: ${data.germinoma.top_label_ko} ${scorePercent(data.germinoma.confidence) || 0}%`
   }
   const groups = [{
-    title: thorax ? '흉부 소견' : '출혈 (ICH)',
+    title: thorax ? '흉부 소견' : abdomen ? '복부 장기' : '출혈 (ICH)',
     findings: (top.findings || []).map(findingView)
   }]
-  if (!thorax && data.germinoma && data.germinoma.findings) {
+  if (!thorax && !abdomen && data.germinoma && data.germinoma.findings) {
     groups.push({ title: 'Germinoma', findings: data.germinoma.findings.map(findingView) })
+  }
+  const notes = []
+  if (thorax) notes.push('흉부 화면 분석에는 판독문이 없습니다.')
+  if (abdomen) {
+    notes.push('장기 점수 = 그 장기 박스의 최고 신뢰도입니다.')
+    notes.push('질환 진단이 아니라 장기 위치 학습용입니다.')
   }
   return {
     title,
     explainable: !thorax,
     overlay: data.overlay_png_base64 || '',
-    notes: thorax ? ['흉부 화면 분석에는 판독문이 없습니다.'] : [],
+    notes,
     meta: [
       data.roi ? `ROI 크기: ${data.roi.width}×${data.roi.height}` : '',
       data.image_stats ? `밝기 평균/편차: ${data.image_stats.mean} / ${data.image_stats.std}` : '',
       data.latency_ms != null ? `추론 시간: ${data.latency_ms}ms` : '',
-      data.overlay_summary ? `이상 부위: ${data.overlay_summary}` : ''
+      data.overlay_summary ? `${abdomen ? '장기 위치' : '이상 부위'}: ${data.overlay_summary}` : ''
     ].filter(Boolean),
     groups
   }
@@ -253,7 +291,9 @@ export function presentAnalysis(target, data) {
   if (!data) return null
   if (target === 'brain-mri') return presentBrainMri(data)
   if (target === 'knee') return presentKnee(data)
-  return presentScreen(data, target === 'thorax')
+  if (target === 'thorax') return presentScreen(data, 'thorax')
+  if (target === 'abdomen') return presentScreen(data, 'abdomen')
+  return presentScreen(data, 'brain')
 }
 
 export function parseReport(text) {
@@ -265,7 +305,9 @@ export function parseReport(text) {
     const match = line.match(HEAD_RE)
     if (match) {
       if (current) sections.push(current)
-      current = { title: match[1], lines: match[2] ? [match[2]] : [] }
+      const title = match[1] || match[2]
+      const rest = match[3]
+      current = { title, lines: rest ? [rest] : [] }
       return
     }
     if (!current) current = { title: '판독', lines: [] }
