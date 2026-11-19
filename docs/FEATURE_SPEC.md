@@ -6,7 +6,7 @@
 
 - [x] 백엔드 주소는 `src/apiBase.js`의 `API_BASE` 한곳이다. 페이지를 연 주소가 `127.0.0.1` 또는 `localhost`이면 `http://127.0.0.1:8000`이다. 그 외 호스트면 같은 호스트의 8000포트다. 주소에 `?api=`를 붙이거나 `localStorage` 키 `medlens_api_base`가 있으면 그 값을 쓴다. 로그인·팝업·문의·오늘 현황·오답노트·학습 기록·채점 이미지·문제·채점·용어 요청이 이 값을 붙인다
 - [x] 안내 알림은 브라우저 `alert` 대신 SweetAlert2다. 호출은 `src/notify.js`의 `showMessage`만 사용한다
-- [x] `/` 는 세션이 있으면 `/main`, 없으면 `/login`
+- [x] `/` 는 세션이 있으면 `/main`, 없으면 소개 원페이지(`IntroPage`)다
 - [x] 로그아웃은 `medlens_user`와 `medlens.review`를 지우고 `/login`으로 간다
 - [x] `/medical`, `/medical/review`, `/main`, `/learning`, `/note`, `/history`, `/glossary` 는 세션이 없으면 `/login`으로 보낸다
 - [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`, `/glossary`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. 로고 Mediscan Note, 학습, 용어 사전, 오답노트, 화면 분석, 마이페이지, 문의하기, 이름·로그아웃이 같다. 로고는 `src/components/main/BrandMark.vue`다. 흰 배경에서는 Medi가 남색, scan이 파랑, Note가 청록이고, 로그인·가입의 어두운 배경에서는 흰 글씨에 scan만 청록이다. 로고를 누르면 `/main`으로 간다. "화면 분석"은 `/analyze`로, "용어 사전"은 `/glossary`로 이동한다
@@ -39,6 +39,16 @@
 - [x] 화면이 짧아도 "학습 시작"은 패널 아래에 고정되고, 부위·영상 선택만 스크롤한다
 - [x] 사이드바 "학습 기록"은 `/history`로 이동한다
 - [ ] 북마크·리포트·설정 화면으로 이동한다
+
+## 소개 `/`
+
+- [x] 로그인 전 원페이지다. 세션이 있으면 `/main`으로 보낸다
+- [x] 헤더에 Mediscan Note, 서비스 소개·사용 방법·이용 안내·FAQ 앵커, 로그인 링크가 있다
+- [x] 히어로에서 무료로 시작하기는 `/signup`, 하단·헤더 로그인은 `/login`으로 간다
+- [x] 사용 방법(부위 선택·ROI 표시·채점 확인), 핵심 기능(영상 학습·ROI·리뷰·용어 사전·오답 노트), 이용 안내(모달리티), FAQ, 하단 CTA를 한 페이지에 둔다
+- [x] 핵심 기능 카드마다 링크 버튼이 있다. 영상 학습·ROI·리뷰는 "자세히 보기", 용어 사전은 "사전 전체 보기", 오답 노트는 "오답 노트 보기"이며 모두 `/login`으로 간다
+- [x] 히어로 오른쪽 원형 영상은 `public/intro/hero-xray.png`다
+- [x] 화면은 `src/components/intro/IntroPage.vue`다. 로그인 세션 API는 호출하지 않는다
 
 ## 로그인 `/login`
 

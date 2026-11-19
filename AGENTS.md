@@ -22,6 +22,7 @@ src/
   notify.js            SweetAlert2 알림 showMessage
   router/index.js      경로와 로그인 이동
   components/
+    intro/             로그인 전 소개 원페이지
     login/             로그인, 세션
     signup/            회원가입
     main/              로그인 후 홈 (인사, 바로가기, 학습 현황)

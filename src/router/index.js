@@ -11,6 +11,7 @@ import ScreenAnalyzePage from '../components/analyze/ScreenAnalyzePage.vue'
 import WrongNotePage from '../components/note/WrongNotePage.vue'
 import LearningHistoryPage from '../components/history/LearningHistoryPage.vue'
 import GlossaryPage from '../components/glossary/GlossaryPage.vue'
+import IntroPage from '../components/intro/IntroPage.vue'
 import {getUserSession} from '../components/login/authSession'
 
 function requireSession(to, from, next) {
@@ -26,7 +27,14 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            redirect: () => (getUserSession() ? '/main' : '/login')
+            component: IntroPage,
+            beforeEnter(to, from, next) {
+                if (getUserSession()) {
+                    next('/main')
+                    return
+                }
+                next()
+            }
         },
         {
             path: '/signup',
