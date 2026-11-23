@@ -172,6 +172,15 @@ export async function fetchLearnerReview(reviewIdx, userIdx) {
   return data.review || null
 }
 
+/** 채점 결과 임시 저장(medlens.review)을 지운다. 로그아웃·계정 종료의 공통 정리에서 부른다. */
+export function clearReviewStorage() {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY)
+  } catch (e) {
+    // 저장소를 쓸 수 없으면 지울 것도 없다
+  }
+}
+
 export function loadReviewFromStorage() {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)

@@ -9,7 +9,7 @@
         <!--        <router-link class="main-header__link" to="/glossary">용어 사전</router-link>-->
         <router-link class="main-header__link" to="/note">오답노트</router-link>
         <router-link class="main-header__link" to="/analyze">화면 분석</router-link>
-        <a class="main-header__link" href="#" @click.prevent>마이페이지</a>
+        <router-link class="main-header__link" to="/mypage">마이페이지</router-link>
         <button type="button" class="main-header__link main-header__inquiry" @click="onInquiry">
           문의하기
         </button>
@@ -38,10 +38,9 @@
 </template>
 
 <script>
-import {clearUserSession, getUserSession} from '../login/authSession'
+import {getUserSession} from '../login/authSession'
+import {logout} from '../login/accountSession'
 import BrandMark from './BrandMark.vue'
-
-const REVIEW_STORAGE_KEY = 'medlens.review'
 
 export default {
   name: 'MainHeader',
@@ -51,7 +50,8 @@ export default {
   data() {
     return {
       user: getUserSession(),
-      menuOpen: false
+      menuOpen: false,
+      loggingOut: false
     }
   },
   computed: {
@@ -76,12 +76,15 @@ export default {
     onUserMenu() {
       this.menuOpen = !this.menuOpen
     },
-    onLogout() {
+    async onLogout() {
+      if (this.loggingOut) return
       this.menuOpen = false
-      clearUserSession()
-      sessionStorage.removeItem(REVIEW_STORAGE_KEY)
-      this.user = null
-      this.$router.push('/login')
+      this.loggingOut = true
+      // 공통 로그아웃: 서버 로그아웃 확인 → 같은 계정일 때만 화면 세션·채점 임시 저장 정리(accountSession.logout)
+      await logout()
+      this.loggingOut = false
+      this.user = getUserSession()
+      if (!this.user) this.$router.push('/login')
     },
     onInquiry() {
       this.menuOpen = false

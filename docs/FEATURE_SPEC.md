@@ -4,12 +4,22 @@
 
 ## 공통
 
-- [x] 백엔드 주소는 `src/apiBase.js`의 `API_BASE` 한곳이다. 페이지를 연 주소가 `127.0.0.1` 또는 `localhost`이면 `http://127.0.0.1:8000`이다. 그 외 호스트면 같은 호스트의 8000포트다. 주소에 `?api=`를 붙이거나 `localStorage` 키 `medlens_api_base`가 있으면 그 값을 쓴다. 로그인·팝업·문의·오늘 현황·오답노트·학습 기록·채점 이미지·문제·채점·용어 요청이 이 값을 붙인다
+- [x] 백엔드 주소는 `src/apiBase.js`의 `API_BASE` 한곳이다. 값은 `http(s)://호스트[:포트]`(끝 슬래시 하나까지) 형식만 받아 정규 origin 으로 바꿔 쓴다. 검사에 쓴 그 값을 실제 요청에도 쓴다. 경로·쿼리·빈 `?`·`#`·`http:호스트`처럼 형식이 틀리면 어떤 서버에도 닿지 않는 `http://invalid-api-base.invalid`를 쓰고 로그인도 막는다. 실행 설정 `VUE_APP_API_BASE`가 있으면 그 값, 없으면 페이지를 연 주소가 `127.0.0.1` 또는 `localhost`일 때 `http://127.0.0.1:8000`, 그 외 호스트면 같은 호스트의 8000포트다. 팝업·문의·오늘 현황·오답노트·학습 기록·채점 이미지·문제·채점·용어 요청이 이 값을 붙인다
+- [x] `?api=`와 `localStorage` 키 `medlens_api_base`는 더 이상 주소를 바꾸지 않는다. 실행 설정과 다른 저장값은 시작할 때 지운다. 로그인한 계정과 다른 백엔드에 회원 번호로 학습 요청을 보내지 않기 위해서다. 다른 백엔드로 시험하려면 실행 설정으로 바꾼다
+- [x] 계정 API(로그인·로그아웃·마이페이지·설정)는 같은 출처 상대 주소 `/account-api/...`다. `npm run serve`의 개발 서버가 `vue.config.js`·`devserver/accountProxy.js`로 받아 `ACCOUNT_PROXY_TARGET`(기본 `http://127.0.0.1:8000`)으로 넘긴다. 이 대상과 `API_BASE`는 경로·쿼리 없는 정규 origin(스킴·호스트·포트)이 완전히 같아야 한다. `127.0.0.1`과 `localhost`·`[::1]`도 다른 서버로 본다. 같은 서버를 다른 주소로 불러야 할 때만 실행 설정 `ACCOUNT_API_ALIASES`(쉼표 목록)에 그 주소를 적는다. 다르면 로그인하지 않는다
+- [x] 로그인한 세션에는 그때의 계정 서버(`account_target`)를 함께 적는다. 화면을 옮길 때마다(라우터) 지금 실행 설정과 비교해, 설정이 바뀌었거나 두 주소가 다르면 기존 세션과 채점 임시 저장을 지우고 "학습 서버 설정이 바뀌어…" 안내와 함께 로그인 화면으로 보낸다
+- [x] 계정 프록시는 `POST /login`, `POST /logout`, `GET /me`, `GET /me/stats`, `GET /me/settings`, `PATCH /me/profile`, `POST /me/password` 일곱 조합만 넘긴다. 다른 경로 404, 다른 메서드 405, 쿼리·비정규 경로 400이다. 쓰기는 이 화면 주소와 같은 Origin 만 받는다
+- [x] 계정 쿠키는 브라우저에 `medlens_account_<화면 포트>`(Path=`/account-api`, HttpOnly)로만 두고, 백엔드에는 `brain_fast_session`으로 바꿔 보낸다. 쿠키는 포트를 가리지 않아서 이름에 화면 포트를 넣는다. 그래서 포트가 다른 devServer 끼리, 그리고 같은 호스트의 관리자·직접 백엔드 쿠키와도 로그인·만료가 섞이지 않는다. 쿠키를 바꾸는 응답(로그인·로그아웃·비밀번호 변경)만 쿠키를 전달한다
+- [x] 실행 환경은 `npm run serve`(개발 서버)다. 빌드본을 다른 서버로 서비스하는 경우는 계정 프록시가 없어 지원하지 않는다
+- [x] 브라우저는 `http://localhost:포트` 또는 `http://127.0.0.1:포트`로 연다. 탭끼리 로그인·로그아웃을 한 줄로 세우는 Web Locks 가 안전한 출처에서만 있어서, LAN 주소(`http://192.168.x.x`)나 이를 지원하지 않는 브라우저에서는 로그인 요청 없이 "이 브라우저 주소에서는 로그인할 수 없어요…" 안내를 보여 준다
+- [x] 계정 프록시는 요청 하나에 15초 예산을 두고 본문 수신·계정 확인·전달이 함께 쓴다. 본문이 멈추면 408, 백엔드가 늦으면 504 이고, 브라우저 연결이 이미 끊긴 쓰기는 백엔드로 보내지 않는다
+- [x] 백엔드 오류 응답(4xx·5xx)은 원문을 넘기지 않는다. 상태와 고정 코드(`login_required`, `forbidden`, `conflict`, `invalid_input`+알려진 칸 이름, `rate_limited`, `bad_password`, `password_mismatch`, `same_password`, `server_error` 등)만 돌려준다. 검증 오류의 입력값은 브라우저에 오지 않는다
+- [x] 학습 기록·오답노트 등 기존 학습 API 는 지금처럼 회원 번호(`user_idx`)로 부른다. 이 방식의 권한 한계는 이번 계정 연결로 해결되지 않았다
 - [x] 안내 알림은 브라우저 `alert` 대신 SweetAlert2다. 호출은 `src/notify.js`의 `showMessage`만 사용한다
 - [x] `/` 는 세션이 있으면 `/main`, 없으면 소개 원페이지(`IntroPage`)다
-- [x] 로그아웃은 `medlens_user`와 `medlens.review`를 지우고 `/login`으로 간다
-- [x] `/medical`, `/medical/review`, `/main`, `/learning`, `/note`, `/history`, `/glossary` 는 세션이 없으면 `/login`으로 보낸다
-- [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`, `/glossary`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. 로고 Mediscan Note, 학습, 용어 사전, 오답노트, 화면 분석, 마이페이지, 문의하기, 이름·로그아웃이 같다. 로고는 `src/components/main/BrandMark.vue`다. 흰 배경에서는 Medi가 남색, scan이 파랑, Note가 청록이고, 로그인·가입의 어두운 배경에서는 흰 글씨에 scan만 청록이다. 로고를 누르면 `/main`으로 간다. "화면 분석"은 `/analyze`로, "용어 사전"은 `/glossary`로 이동한다
+- [x] 로그아웃은 머리글·설정 모두 `src/components/login/accountSession.js`의 `logout()`이다. 서버 `POST /account-api/logout`이 `{ok:true}`를 돌려주면 같은 계정일 때만 `medlens_user`와 `medlens.review`를 지우고 `/login`으로 간다. 서버 종료를 확인하지 못하면 화면만 정리하고 로그인 화면에 미확인 안내와 '서버 로그아웃 다시 시도'를 보여 준다. 브라우저 쿠키가 다른 계정이면 그 계정은 건드리지 않고 이 화면만 정리한다
+- [x] `/medical`, `/medical/review`, `/main`, `/learning`, `/analyze`, `/note`, `/history`, `/glossary`, `/mypage`, `/settings` 는 세션이 없으면 `/login`으로 보낸다
+- [x] `/main`, `/learning`, `/medical`, `/medical/review`, `/analyze`, `/note`, `/history`, `/glossary`, `/mypage`, `/settings`는 `src/components/main/PageFrame.vue`가 붙이는 `MainHeader`를 쓴다. 로고 Mediscan Note, 학습, 용어 사전, 오답노트, 화면 분석, 마이페이지, 문의하기, 이름·로그아웃이 같다. 로고는 `src/components/main/BrandMark.vue`다. 흰 배경에서는 Medi가 남색, scan이 파랑, Note가 청록이고, 로그인·가입의 어두운 배경에서는 흰 글씨에 scan만 청록이다. 로고를 누르면 `/main`으로 간다. "화면 분석"은 `/analyze`로, "용어 사전"은 `/glossary`로 이동한다
 - [x] 헤더 "문의하기"는 그 페이지에서 채팅 창을 연다
 - [x] 풀이 화면의 "가이드"는 케이스 정보 줄에 있고, 원/박스 드래그, 제출, 리뷰 순서를 패널로 보여 준다
 
@@ -23,7 +33,7 @@
 - [x] 헤더 "오답노트"와 홈의 오답노트 카드는 `/note`로 이동한다
 - [x] 홈의 학습 기록 카드는 `/history`로 이동한다
 - [x] 홈의 화면 분석 카드는 `/analyze`로 이동한다
-- [ ] 마이페이지 화면으로 이동한다
+- [x] 헤더 "마이페이지"는 `/mypage`로 이동한다. 화면 내용의 연결 상태는 아래 마이페이지 절을 본다
 - [x] 이벤트 팝업은 `GET http://127.0.0.1:8000/popups` 목록을 화면 왼쪽 위부터 여러 장 띄운다. 제목 줄을 끌어 각 팝업을 옮길 수 있다. ×·닫기는 그 팝업만 지금 화면에서 닫고, "오늘 하루 보지 않기"는 그 팝업만 오늘 다시 뜨지 않는다
 - [x] `pp_link`가 있을 때만 "참여하기"를 보여 준다. http 주소는 새 탭, 그 외 경로는 앱 안에서 이동한다
 - [x] 헤더 "문의하기"는 채팅 창을 연다. `GET /qa?user_idx=`로 최근 문의를 보여주고, 첫 글은 `POST /qa`, 이어서 쓴 글은 `POST /qa/{idx}/messages`로 보낸다
@@ -53,9 +63,10 @@
 ## 로그인 `/login`
 
 - [x] 아이디, 비밀번호를 입력한다
-- [x] `POST http://127.0.0.1:8000/login` 본문 `{ userId, userPw }`
-- [x] 성공(`ok`) 시 세션을 저장하고 `/main`으로 이동한다
-- [x] 실패 시 서버 `detail` 또는 `message`, 없으면 "아이디 또는 비밀번호가 올바르지 않습니다."
+- [x] 같은 출처 `POST /account-api/login` 본문 `{ userId, userPw }`를 한 번 보낸다(`accountSession.login()`)
+- [x] 성공 응답(`ok`·양의 정수 `idx`·아이디)을 받으면 이어서 `GET /account-api/me`로 쿠키가 실제로 오가고 같은 회원인지 확인한다. 둘 다 맞을 때만 세션(`account_verified: true` 포함)을 저장하고 `/main`으로 이동한다
+- [x] 틀린 비밀번호·가짜 성공(HTML·깨진 JSON)·쿠키 확인 실패·다른 회원·두 백엔드 주소 불일치이면 세션을 저장하지 않고 고정 안내를 보여 준다(서버 원문은 쓰지 않는다)
+- [x] 로그인·로그아웃·비밀번호 변경·정보 저장은 같은 브라우저의 모든 탭에서 한 번에 하나만 실행한다(Web Locks). 쿠키가 바뀌면 다른 탭에 알리고, 알림을 못 받은 탭도 돌아올 때 다시 확인한다
 - [x] 이미 로그인된 사용자는 `/main`으로 보낸다
 - [x] 가입 화면으로 이동하는 링크가 있다
 - [x] '아이디 찾기 | 비밀번호 찾기' 링크로 `/find-id`·`/find-password` 에 간다
@@ -177,9 +188,28 @@
 - [x] 케이스 행은 `region`, `type`, `idx`(study), `review`(제출 번호)로 `/medical/review`에 간다. 리뷰 화면은 `review`로 그 제출 이미지를 불러온다
 - [x] 기간 안 제출이 없으면 "이 기간에 학습 기록이 없어요."를 보여 준다
 
+## 마이페이지 `/mypage`
+
+- [x] 헤더 "마이페이지"로 들어오고, 세션이 없으면 `/login`으로 보낸다. 쿠키 확인 전 방식으로 로그인한 세션이면 서버를 부르지 않고 다시 로그인을 안내한다
+- [x] `GET /account-api/me`로 이름·학교·전공·아이디와 최근 저장된 제출 최대 5건을 보여 준다. 응답 회원이 화면 세션과 다르면 그리지 않는다
+- [x] `GET /account-api/me/stats`로 격려 문구, 연속 학습일·이번 주 표시, 숫자 4칸(푼 문제·정답률·이번 주 푼 문제·학습한 부위), 최근 7일 막대, 부위별 정답률을 채운다. 서버 계약(합계·범위·`owner_idx`)과 다르면 통계 칸만 오류다. 숫자는 서버가 계산한 값만 쓴다
+- [x] 통계만 실패하면 프로필·최근 제출은 그대로 두고 "다시 시도"를 보여 준다. 401·403·서버 오류는 고정 안내다. 응답 본문이 멈추면 15초 뒤 실패로 본다
+- [x] 서울 자정이 지나거나 탭에 돌아오면 다시 받는다. 다른 탭에서 계정이 바뀌면 지금 계정을 다시 확인한다
+- [x] "설정 보기"는 `/settings`, "학습 시작"은 `/learning`, 최근 제출 아래 "학습 기록"은 `/history`로 이동한다
+
+## 설정 `/settings`
+
+- [x] 마이페이지 "설정 보기"로 들어오고, 세션이 없으면 `/login`으로 보낸다
+- [x] `GET /account-api/me/settings`로 이름·학교·전공과 정보 버전을 불러온다. 응답 회원이 화면 세션과 다르면 그리지 않는다
+- [x] 내 정보 저장: 입력 확인 → "이 내용으로 저장할까요?" → `PATCH /account-api/me/profile`(현재 비밀번호·`expected_version`). 409 는 "다른 곳에서 정보가 바뀌었어요"와 다시 불러오기, 틀린 비밀번호·입력 오류는 고정 안내다. 저장 여부를 모르면 자동으로 다시 보내지 않는다
+- [x] 비밀번호 변경: `POST /account-api/me/password`가 `ok·password_changed·session_ended`를 모두 true 로 돌려주면 화면 세션을 정리하고 로그인 화면에 "비밀번호를 변경했어요"를 보여 준다. 화면을 떠나도 결과 확인까지 마친다
+- [x] 쓰기 요청(로그아웃·저장·비밀번호 변경)은 화면 세션의 회원 번호를 `X-Medlens-Account`로 보내고, 프록시가 같은 쿠키로 `GET /me/settings`를 불러 인증된 회원과 같을 때만 넘긴다. 다르면 412 이고 "다른 계정이 로그인되어 있어 요청을 보내지 않았어요" 안내다
+- [x] 비밀번호 찾기 안내는 아이디·이름·생년월일과 가입 때 등록한 질문의 답으로 확인한다고 적는다. 학교·전공은 확인에 쓰지 않는다
+- [x] "마이페이지로 돌아가기"는 `/mypage`로 간다. "로그아웃"은 머리글과 같은 `logout()`이다
+
 ## 화면 공유 분석 `/analyze`
 
-- [x] 로그인 없이 연다. 상단 헤더는 다른 페이지와 같은 `MainHeader`다. 왼쪽은 화면 공유·ROI, 오른쪽은 분석 결과다
+- [x] 로그인 세션이 있어야 연다(없으면 `/login`). 상단 헤더는 다른 페이지와 같은 `MainHeader`다. 왼쪽은 화면 공유·ROI, 오른쪽은 분석 결과다
 - [x] "화면 공유 시작"은 브라우저 화면 공유를 받고, 휠로 스크롤한 뒤 드래그로 네모 박스를 그린다
 - [x] "선택 영역 분석"은 고른 대상으로 자른 이미지를 보낸다. 뇌 CT는 `POST ${API_BASE}/api/v1/analyze/screen-roi`와 출혈·germinoma 확률, 흉부 X-ray는 모델 준비 `GET ${API_BASE}/api/v1/thorax/health` 뒤 `POST ${API_BASE}/api/v1/thorax/analyze/screen-roi`(판독문 없음), 복부 CT는 모델·판독문 상태 `GET ${API_BASE}/api/v1/abdomen/health` 뒤 `POST ${API_BASE}/api/v1/abdomen/analyze/screen-roi`로 장기 박스·점수·overlay를 받는다(`classification.task`는 `abdomen`, 장기 점수=그 장기 박스 최고 신뢰도, 질환 진단이 아니라 장기 위치 학습용), 뇌 MRI는 `GET ${API_BASE}/api/v1/brain-mri/health` 뒤 `POST ${API_BASE}/api/v1/analyze/brain-mri`(PNG/JPEG, 시퀀스 선택), 무릎 MRI는 촬영면·범위와 함께 `POST ${API_BASE}/api/v1/knee/screen-roi`다. 오른쪽 결과 칸은 그 안에서 스크롤한다
 - [x] "AI 해설 (MedGemma)"는 뇌 CT·복부 CT 분석이 끝난 뒤에 켜진다. 뇌 CT는 `POST ${API_BASE}/api/v1/analyze/screen-roi/explain`, 복부 CT는 `POST ${API_BASE}/api/v1/abdomen/analyze/screen-roi/explain`으로 한국어 판독문([검사]~[면책])을 받아 보여 준다

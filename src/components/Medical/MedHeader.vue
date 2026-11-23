@@ -60,10 +60,10 @@
 </template>
 
 <script>
-import {clearUserSession, getUserSession} from '../login/authSession'
+import {getUserSession} from '../login/authSession'
+import {logout} from '../login/accountSession'
 import BrandMark from '../main/BrandMark.vue'
 
-const REVIEW_STORAGE_KEY = 'medlens.review'
 
 const REGION_LABELS = {
   brain: '뇌',
@@ -81,6 +81,7 @@ export default {
     return {
       user: getUserSession(),
       menuOpen: false,
+      loggingOut: false,
       guideOpen: false
     }
   },
@@ -130,12 +131,15 @@ export default {
         this.guideOpen = false
       }
     },
-    onLogout() {
+    async onLogout() {
+      if (this.loggingOut) return
       this.menuOpen = false
-      clearUserSession()
-      sessionStorage.removeItem(REVIEW_STORAGE_KEY)
-      this.user = null
-      this.$router.push('/login')
+      this.loggingOut = true
+      // 공통 로그아웃: 서버 로그아웃 확인 → 같은 계정일 때만 화면 세션·채점 임시 저장 정리(accountSession.logout)
+      await logout()
+      this.loggingOut = false
+      this.user = getUserSession()
+      if (!this.user) this.$router.push('/login')
     }
   }
 }
