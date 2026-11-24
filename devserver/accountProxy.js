@@ -1,7 +1,10 @@
 // 계정 API 같은 출처 프록시 (npm run serve 전용, MYPAGE-TEAM-FE-20261123).
 //
 // 브라우저는 /account-api/... 로만 부르고, 이 미들웨어가 요청을 검사한 뒤 백엔드로 넘긴다.
-// - 승인된 일곱 조합만 넘긴다. 나머지 경로 404, 다른 메서드 405, 쿼리·비정규 경로 400. 이때 백엔드·SPA 폴백 호출은 없다.
+// - 승인된 조합만 넘긴다(계정 7개 + 무릎 제출 POST /learning/roi-grade/knee). 나머지 경로 404, 다른 메서드 405,
+//   쿼리·비정규 경로 400. 이때 백엔드·SPA 폴백 호출은 없다.
+// - 무릎 제출은 로그인 쿠키(learner 세션)가 있어야 채점하는 백엔드 경로라 같은 출처로 넘긴다. 다른 쓰기와 같이
+//   화면 계정과 쿠키 계정이 같을 때만 넘기고, 본문은 기존 형식(application/x-www-form-urlencoded) 그대로 보낸다.
 // - 쓰기(POST·PATCH)는 Origin 이 이 화면 주소와 정확히 같아야 한다. 화면 주소는 루프백이거나 ACCOUNT_TRUSTED_ORIGINS 에 있어야 한다.
 // - 쿠키는 브라우저에 medlens_account_<화면 포트>(Path=/account-api)로만 두고, 백엔드에는 brain_fast_session 으로 바꿔 보낸다.
 //   쿠키는 포트를 구분하지 않으므로 이름에 화면 포트를 넣어, 포트가 다른 devServer(=다른 출처, 다른 Web Locks 범위)끼리
@@ -24,9 +27,12 @@ const ROUTES = {
   '/me/stats': 'GET',
   '/me/settings': 'GET',
   '/me/profile': 'PATCH',
-  '/me/password': 'POST'
+  '/me/password': 'POST',
+  '/learning/roi-grade/knee': 'POST'
 }
-const NEEDS_ACCOUNT = new Set(['/logout', '/me/profile', '/me/password'])
+const NEEDS_ACCOUNT = new Set(['/logout', '/me/profile', '/me/password', '/learning/roi-grade/knee'])
+// 본문 형식: 기본은 JSON, 무릎 제출만 기존 폼 형식
+const BODY_TYPES = { '/learning/roi-grade/knee': 'application/x-www-form-urlencoded' }
 const SESSION_CHANGING = new Set(['/login', '/logout', '/me/password'])
 const BROWSER_COOKIE_PREFIX = 'medlens_account_'
 // 허용하는 대상 주소 형식(화면의 src/apiBase.js 와 같은 규칙): http(s)://호스트[:포트] 와 선택적인 끝 슬래시 하나
@@ -270,6 +276,7 @@ function createAccountProxy(rawTarget) {
     if (!/^(\/[a-z0-9_-]+)+$/.test(sub)) return fail(res, 'badPath')
     const allowed = Object.prototype.hasOwnProperty.call(ROUTES, sub) ? ROUTES[sub] : null
     if (!allowed) return fail(res, 'notFound')
+    const bodyType = BODY_TYPES[sub] || 'application/json'
     if (req.method !== allowed) {
       return send(res, 405, { ok: false, detail: '허용되지 않은 방법입니다.' }, { Allow: allowed })
     }
@@ -286,7 +293,7 @@ function createAccountProxy(rawTarget) {
       return fail(res, 'forbiddenOrigin')
     }
 
-    // 3) 본문(쓰기만): 크기 상한, JSON 만
+    // 3) 본문(쓰기만): 크기 상한, 경로마다 정한 형식만(기본 JSON, 무릎 제출은 폼)
     let body = Buffer.alloc(0)
     if (allowed !== 'GET') {
       try {
@@ -294,7 +301,7 @@ function createAccountProxy(rawTarget) {
       } catch (e) {
         return fail(res, e && e.code === 'TOO_LARGE' ? 'tooLarge' : e && e.code === 'TIMEOUT' ? 'bodyTimeout' : 'badPath')
       }
-      if (body.length && !String(req.headers['content-type'] || '').toLowerCase().startsWith('application/json')) {
+      if (body.length && !String(req.headers['content-type'] || '').toLowerCase().startsWith(bodyType)) {
         return fail(res, 'badPath')
       }
     }
@@ -339,7 +346,7 @@ function createAccountProxy(rawTarget) {
     const headers = { ...baseHeaders }
     if (origin) headers.Origin = origin
     if (body.length) {
-      headers['Content-Type'] = 'application/json'
+      headers['Content-Type'] = bodyType
       headers['Content-Length'] = body.length
     } else if (allowed !== 'GET') {
       headers['Content-Length'] = 0

@@ -1,7 +1,25 @@
 import { API_BASE } from '../../apiBase'
+import { getUserSession } from '../login/authSession'
+import { isAccountSession } from '../login/accountSession'
 
 const BRAIN_MRI_API = `${API_BASE}/api/v1/analyze/brain-mri`
-const KNEE_GRADE_API = `${API_BASE}/learning/roi-grade/knee`
+// 무릎 채점은 로그인 쿠키(learner 세션)가 있어야 하므로 같은 출처 계정 프록시로 보낸다(devserver/accountProxy.js).
+const KNEE_GRADE_API = '/account-api/learning/roi-grade/knee'
+const KNEE_TIMEOUT_MS = 20000
+// 무릎 채점 실패 안내(고정 문구). 프록시가 서버 원문 대신 상태·코드만 돌려준다.
+const KNEE_ERROR = {
+  400: '박스 영역이나 장 번호를 확인한 뒤 다시 제출해 주세요.',
+  401: '로그인이 필요합니다. 다시 로그인해 주세요.',
+  403: '관리자 승인 후 사용할 수 있어요. 승인 여부는 관리자에게 문의해 주세요.',
+  404: '채점할 수 있는 문제가 아닙니다.',
+  408: '제출 내용을 다 보내지 못했어요. 다시 제출해 주세요.',
+  409: '문제 내용이 바뀌었어요. 문제를 다시 열어 주세요.',
+  412: '이 브라우저에 다른 계정이 로그인되어 있어 제출하지 않았어요. 다시 로그인해 주세요.',
+  413: '제출 내용이 너무 커요.',
+  429: '시도가 너무 많아요. 잠시 후 다시 해 주세요.',
+  503: '지금은 무릎 채점을 사용할 수 없어요.'
+}
+const KNEE_UNKNOWN = '채점 결과를 확인하지 못했어요. 학습 기록에서 저장됐는지 확인한 뒤 필요하면 다시 제출해 주세요.'
 
 function errorDetail(payload, fallback) {
   const detail = payload && payload.detail
@@ -71,20 +89,44 @@ export function brainMriAsGrade(data) {
   }
 }
 
+/**
+ * 무릎 ROI 채점. 같은 출처 /account-api 로 로그인 쿠키와 함께 보낸다. 회원은 서버가 쿠키로 정하고,
+ * 화면 계정 번호(X-Medlens-Account)는 프록시가 쿠키 계정과 같은지 확인하는 데만 쓴다(인증 수단 아님, 폼에 회원 번호를 싣지 않는다).
+ * 자동으로 다시 보내지 않는다. 채점하지 않는 문제(승인 기준 없음 등)는 200 + graded=false 로 온다.
+ */
 export async function gradeKneeRoi(fields) {
+  const owner = getUserSession()
+  if (!isAccountSession(owner)) {
+    throw new Error('무릎 채점은 다시 로그인한 뒤 사용할 수 있어요. 로그아웃 후 다시 로그인해 주세요.')
+  }
   const body = new URLSearchParams()
   Object.keys(fields).forEach((key) => {
+    if (key === 'user_idx') return
     if (fields[key] != null && fields[key] !== '') body.set(key, String(fields[key]))
   })
-  const response = await fetch(KNEE_GRADE_API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
-  })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok && !(data && data.reading)) {
-    throw new Error(errorDetail(data, `무릎 채점 오류 (${response.status})`))
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), KNEE_TIMEOUT_MS)
+  let response
+  let data = null
+  try {
+    response = await fetch(KNEE_GRADE_API, {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      redirect: 'manual',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Medlens-Account': String(owner.idx) },
+      body,
+      signal: controller.signal
+    })
+    data = await response.json().catch(() => null)
+  } catch (e) {
+    throw new Error(KNEE_UNKNOWN)
+  } finally {
+    clearTimeout(timer)
   }
+  if (response.type === 'opaqueredirect') throw new Error(KNEE_UNKNOWN)
+  if (!response.ok) throw new Error(KNEE_ERROR[response.status] || KNEE_UNKNOWN)
+  if (!data || data.ok !== true || typeof data.graded !== 'boolean') throw new Error(KNEE_UNKNOWN)
   return data
 }
 

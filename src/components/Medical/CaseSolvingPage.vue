@@ -664,7 +664,7 @@ export default {
         return brainMriAsGrade(data)
       }
       if (kind === 'knee-mri') {
-        const user = getUserSession()
+        // 회원은 서버가 로그인 쿠키로 정한다(폼에 회원 번호를 싣지 않는다).
         const data = await gradeKneeRoi({
           study_idx: this.studyIdx,
           roi_type: 'box',
@@ -672,8 +672,7 @@ export default {
           y: box.y,
           width: box.width,
           height: box.height,
-          slice_index: this.shownSliceIndex,
-          user_idx: user?.idx ?? 1
+          slice_index: this.shownSliceIndex
         })
         return kneeAsGrade(data)
       }
