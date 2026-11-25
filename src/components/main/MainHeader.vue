@@ -7,7 +7,7 @@
       <nav class="main-header__nav" aria-label="메인 메뉴">
         <router-link class="main-header__link" to="/learning">학습</router-link>
         <!--        <router-link class="main-header__link" to="/glossary">용어 사전</router-link>-->
-        <router-link class="main-header__link" to="/note">오답노트</router-link>
+        <router-link class="main-header__link" to="/note">리뷰노트</router-link>
         <router-link class="main-header__link" to="/analyze">화면 분석</router-link>
         <router-link class="main-header__link" to="/mypage">마이페이지</router-link>
         <button type="button" class="main-header__link main-header__inquiry" @click="onInquiry">
@@ -38,8 +38,7 @@
 </template>
 
 <script>
-import {getUserSession} from '../login/authSession'
-import {logout} from '../login/accountSession'
+import {getUserSession, logoutUserSession} from '../login/authSession'
 import BrandMark from './BrandMark.vue'
 
 export default {
@@ -77,14 +76,11 @@ export default {
       this.menuOpen = !this.menuOpen
     },
     async onLogout() {
-      if (this.loggingOut) return
       this.menuOpen = false
-      this.loggingOut = true
-      // 공통 로그아웃: 서버 로그아웃 확인 → 같은 계정일 때만 화면 세션·채점 임시 저장 정리(accountSession.logout)
-      await logout()
-      this.loggingOut = false
-      this.user = getUserSession()
-      if (!this.user) this.$router.push('/login')
+      await logoutUserSession()
+      sessionStorage.removeItem(REVIEW_STORAGE_KEY)
+      this.user = null
+      this.$router.push('/login')
     },
     onInquiry() {
       this.menuOpen = false

@@ -36,6 +36,16 @@
                 </select>
               </label>
               <button type="button" :disabled="sharing" @click="onShare">화면 공유 시작</button>
+              <label class="file-pick" :class="{ disabled: sharing }">
+                이미지 열기
+                <input
+                    ref="fileInput"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    :disabled="sharing"
+                    @change="onPickFile"
+                >
+              </label>
               <button type="button" class="secondary" :disabled="!hasRoi" @click="onClear">박스 지우기</button>
               <button type="button" :disabled="!hasRoi || analyzing" @click="onAnalyze">선택 영역 분석</button>
               <button
@@ -55,8 +65,8 @@
           <div class="panel-scroll panel-scroll--capture">
             <div ref="stageWrap" class="stage-wrap" @wheel.passive="onStageWheel" @scroll.passive="drawRoi">
               <div v-show="!sharing" class="placeholder">
-                버튼을 눌러 PACS·뷰어·이미지 창을 공유하세요.<br/>
-                공유 후 <strong>휠로 스크롤</strong>하고, <strong>드래그로 네모 박스</strong>를 그리세요.
+                화면 공유 또는 <strong>이미지 열기</strong>로 영상을 불러오세요.<br/>
+                불러온 뒤 <strong>드래그로 네모 박스</strong>를 그리고 분석을 실행하세요.
               </div>
               <div v-show="sharing" class="stage">
                 <div ref="mediaStack" class="media-stack" :style="stackStyle">
@@ -372,37 +382,86 @@ export default {
     onStageWheel() {
       requestAnimationFrame(() => this.syncOverlaySize())
     },
+    bindShareStream(stream, statusMessage) {
+      this.stream = stream
+      const video = this.$refs.video
+      video.srcObject = stream
+      this.sharing = true
+      this.step = Math.max(this.step, 1)
+      this.setStatus(statusMessage)
+      const ready = () => {
+        this.syncOverlaySize()
+        requestAnimationFrame(() => {
+          this.syncOverlaySize()
+          requestAnimationFrame(() => this.syncOverlaySize())
+        })
+      }
+      video.onloadedmetadata = ready
+      video.onloadeddata = ready
+      video.onresize = ready
+      if (video.readyState >= 1) ready()
+      if (this.resizeObserver) this.resizeObserver.disconnect()
+      this.resizeObserver = new ResizeObserver(() => this.syncOverlaySize())
+      this.resizeObserver.observe(this.$refs.stageWrap)
+      const track = stream.getVideoTracks()[0]
+      if (track) track.addEventListener('ended', this.stopShare)
+      window.addEventListener('resize', this.syncOverlaySize)
+    },
     async onShare() {
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: {frameRate: 10},
           audio: false
         })
-        this.stream = stream
-        const video = this.$refs.video
-        video.srcObject = stream
-        this.sharing = true
-        this.step = Math.max(this.step, 1)
-        this.setStatus('화면 공유 중 · 휠로 스크롤, 드래그로 영역 선택')
-        const ready = () => {
-          this.syncOverlaySize()
-          requestAnimationFrame(() => {
-            this.syncOverlaySize()
-            requestAnimationFrame(() => this.syncOverlaySize())
-          })
-        }
-        video.onloadedmetadata = ready
-        video.onloadeddata = ready
-        video.onresize = ready
-        if (video.readyState >= 1) ready()
-        if (this.resizeObserver) this.resizeObserver.disconnect()
-        this.resizeObserver = new ResizeObserver(() => this.syncOverlaySize())
-        this.resizeObserver.observe(this.$refs.stageWrap)
-        const track = stream.getVideoTracks()[0]
-        if (track) track.addEventListener('ended', this.stopShare)
-        window.addEventListener('resize', this.syncOverlaySize)
+        this.bindShareStream(stream, '화면 공유 중 · 휠로 스크롤, 드래그로 영역 선택')
       } catch (e) {
         this.setStatus('화면 공유가 취소되었거나 권한이 없습니다.')
+      }
+    },
+    async onPickFile(event) {
+      const input = event.target
+      const file = input && input.files && input.files[0]
+      if (!file) return
+      try {
+        this.stopShare()
+        const url = URL.createObjectURL(file)
+        const img = new Image()
+        await new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = reject
+          img.src = url
+        })
+        URL.revokeObjectURL(url)
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(8, img.naturalWidth || img.width)
+        canvas.height = Math.max(8, img.naturalHeight || img.height)
+        canvas.getContext('2d').drawImage(img, 0, 0)
+        if (typeof canvas.captureStream !== 'function') {
+          this.setStatus('이 브라우저는 이미지 열기를 지원하지 않습니다. 화면 공유를 사용해 주세요.')
+          return
+        }
+        const stream = canvas.captureStream(1)
+        this.bindShareStream(stream, '이미지 로드 완료 · 드래그로 영역 선택')
+        // 자동 테스트·빠른 확인용: 전체 영역을 ROI 로 잡는다.
+        this.$nextTick(() => {
+          this.syncOverlaySize()
+          const overlay = this.$refs.overlay
+          if (!overlay || overlay.width < 16 || overlay.height < 16) return
+          this.roi = {
+            x: Math.round(overlay.width * 0.1),
+            y: Math.round(overlay.height * 0.1),
+            w: Math.round(overlay.width * 0.8),
+            h: Math.round(overlay.height * 0.8)
+          }
+          this.hasRoi = true
+          this.step = Math.max(this.step, 2)
+          this.drawRoi()
+          this.setStatus('이미지 ROI 준비됨 · ‘선택 영역 분석’을 누르세요.')
+        })
+      } catch (e) {
+        this.setStatus(`이미지 열기 실패: ${e.message || e}`)
+      } finally {
+        if (input) input.value = ''
       }
     },
     stopShare() {
@@ -683,6 +742,28 @@ button.secondary {
 button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.file-pick {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: var(--accent-dim);
+}
+
+.file-pick.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.file-pick input {
+  display: none;
 }
 
 button.is-loading {

@@ -1,3 +1,5 @@
+import {API_BASE, apiCredentials} from '../../apiBase'
+
 const SESSION_KEY = 'medlens_user'
 
 export function saveUserSession(data) {
@@ -27,4 +29,17 @@ export function getUserSession() {
 
 export function clearUserSession() {
   sessionStorage.removeItem(SESSION_KEY)
+}
+
+/** 화면 세션과 서버 학습자 세션(쿠키)을 함께 끝낸다. */
+export async function logoutUserSession() {
+  try {
+    await fetch(`${API_BASE}/logout`, {
+      method: 'POST',
+      credentials: apiCredentials()
+    })
+  } catch (e) {
+    /* 서버 로그아웃이 실패해도 화면 세션은 지운다 */
+  }
+  clearUserSession()
 }

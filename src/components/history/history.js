@@ -1,5 +1,6 @@
 import {API_BASE} from '../../apiBase'
 import {buildImageUrl} from '../../imageBase'
+import {normalizeResult} from '../Medical/review/reviewModel'
 
 const HISTORY_API = `${API_BASE}/learning/history`
 
@@ -11,8 +12,8 @@ export const HISTORY_RANGES = [
     {id: '30', label: '최근 30일'}
 ]
 
-export function historyImageUrl(path) {
-    return buildImageUrl(path)
+export function historyImageUrl(path, studyIdx, sliceIndex) {
+    return buildImageUrl(path, {studyIdx, sliceIndex})
 }
 
 export function parseCreated(value) {
@@ -39,21 +40,56 @@ function percent(part, total) {
     return Math.round((Number(part) / whole) * 100)
 }
 
+function mapRoi(value) {
+    if (!value || typeof value !== 'object') return null
+    const x = Number(value.x)
+    const y = Number(value.y)
+    const width = Number(value.width)
+    const height = Number(value.height)
+    if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null
+    const type = String(value.type || value.roi_type || 'box').toLowerCase()
+    return {
+        type: type === 'circle' ? 'circle' : 'box',
+        x,
+        y,
+        width,
+        height
+    }
+}
+
 export function mapHistoryItem(row) {
+    const rois = Array.isArray(row.user_rois)
+        ? row.user_rois.map(mapRoi).filter(Boolean)
+        : []
+    const userRoi = mapRoi(row.user_roi) || rois[0] || null
     return {
         idx: row.idx,
         studyIdx: row.study_idx,
         disease: row.disease || '소견 없음',
         solution: row.solution || '',
-        solutionLabel: row.solution_label || '',
+        solutionLabel: normalizeResult(row.solution_label) || '',
         partLabel: row.part_label || '',
         modalLabel: row.modal_label || '',
         region: row.region || '',
         type: row.type || '',
-        image: historyImageUrl(row.image),
+        image: historyImageUrl(row.image, row.study_idx, row.slice_index),
+        userRoi,
+        userRois: rois.length ? rois : (userRoi ? [userRoi] : []),
         createdAt: row.created_at || '',
         dateLabel: formatHistoryDate(row.created_at),
         caseLabel: caseLabel(row.study_idx)
+    }
+}
+
+/** 썸네일 위에 학습자 ROI 박스를 올릴 때 쓰는 인라인 스타일(0~1 좌표). */
+export function roiThumbStyle(roi) {
+    if (!roi) return null
+    return {
+        left: `${Number(roi.x) * 100}%`,
+        top: `${Number(roi.y) * 100}%`,
+        width: `${Number(roi.width) * 100}%`,
+        height: `${Number(roi.height) * 100}%`,
+        borderRadius: roi.type === 'circle' ? '50%' : '0'
     }
 }
 

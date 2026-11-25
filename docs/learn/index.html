@@ -127,7 +127,7 @@
       <a href="#signup">회원가입</a>
       <a href="#home">메인 홈</a>
       <a href="#learning">학습 설정</a>
-      <a href="#note">오답노트</a>
+      <a href="#note">리뷰노트</a>
       <a href="#history">학습 기록</a>
       <a href="#account">계정 연결</a>
       <a href="#mypage">마이페이지와 설정</a>
@@ -182,10 +182,10 @@
             <tr><td><code>src/components/Medical/review/</code></td><td>채점 결과를 다시 보는 화면</td></tr>
             <tr><td><code>src/components/glossary/</code></td><td>의학용어 사전 화면</td></tr>
             <tr><td><code>src/components/analyze/</code></td><td>화면 공유 후 네모 박스를 그려 분석하는 화면</td></tr>
-            <tr><td><code>src/components/note/</code></td><td>오답·부분정답 카드를 보고 다시 푸는 화면</td></tr>
-            <tr><td><code>src/components/history/</code></td><td>진도·정답률과 최근 제출을 보는 학습 기록</td></tr>
+            <tr><td><code>src/components/note/</code></td><td>불일치·부분일치 카드를 보고 다시 푸는 화면</td></tr>
+            <tr><td><code>src/components/history/</code></td><td>진도·일치률과 최근 제출을 보는 학습 기록</td></tr>
             <tr><td><code>src/apiBase.js</code></td><td>백엔드 주소 <code>API_BASE</code>. 요청 파일은 경로만 뒤에 붙인다</td></tr>
-            <tr><td><code>src/imageBase.js</code></td><td>영상 파일 주소 <code>IMAGE_BASE</code>. 상대 경로는 이 버킷 뒤에 붙인다</td></tr>
+            <tr><td><code>src/imageBase.js</code></td><td>영상 파일 주소 <code>IMAGE_BASE</code>. 상대 경로는 이 버킷 뒤에 붙인다. <code>/knee_series/</code>는 공개 저장소에 없어 <code>GET /learning/problem/{번호}/image?slice_index=</code>로 돌린다</td></tr>
             <tr><td><code>src/notify.js</code></td><td>SweetAlert2 알림 <code>showMessage</code></td></tr>
           </tbody>
         </table>
@@ -198,20 +198,19 @@
       <section id="api">
         <h2>백엔드 주소</h2>
         <h3>무엇을 하나</h3>
-        <p>이벤트 팝업, 문의, 문제, 채점, 용어 요청이 같은 서버 주소를 쓴다. 같은 PC에서 열면 <code>127.0.0.1:8000</code>이고, 다른 PC에서 이 앱을 열면 그 PC의 <code>127.0.0.1</code>이 아니라 앱을 연 호스트의 8000포트를 쓴다. 로그인·로그아웃·마이페이지·설정은 이 주소가 아니라 같은 출처 <code>/account-api</code>로 부른다(<a href="#account">계정 연결</a>).</p>
+        <p>로그인, 이벤트 팝업, 문의, 문제, 채점, 용어 요청이 같은 서버 주소를 쓴다. 개발 서버(<code>localhost:8080</code>)에서는 같은 출처 <code>/__api</code>로 보내고, 그 외 로컬은 <code>127.0.0.1:8000</code>, 다른 PC에서 열면 앱을 연 호스트의 8000포트를 쓴다.</p>
         <h3>어느 파일인가</h3>
-        <p><code>src/apiBase.js</code>. 서버 호스트는 화면마다 다르지 않아서 기능 폴더 밖에 둔다. 각 요청 파일은 경로만 이 값 뒤에 붙인다. 계정 프록시 대상과 같은 서버인지 보는 <code>accountTargetProblem()</code>도 여기 있다.</p>
+        <p><code>src/apiBase.js</code>와 <code>vue.config.js</code>의 <code>/__api</code> 프록시. 서버 호스트는 화면마다 다르지 않아서 기능 폴더 밖에 둔다. 각 요청 파일은 경로만 이 값 뒤에 붙인다. 무릎 채점은 서버 세션 쿠키가 필요해서 개발 중에는 프록시로 같은 출처를 맞춘다.</p>
         <h3>동작 순서</h3>
         <ol>
-          <li>실행 설정 <code>VUE_APP_API_BASE</code>가 있으면 그 값이다. 없으면 페이지 호스트가 <code>127.0.0.1</code> 또는 <code>localhost</code>일 때 <code>http://127.0.0.1:8000</code>, 그 외에는 <code>http://연 호스트:8000</code>이다.</li>
-          <li><code>?api=</code>와 <code>localStorage</code>의 <code>medlens_api_base</code>는 이제 주소를 바꾸지 않는다. 실행 설정과 다른 저장값은 시작할 때 지운다. 계정 쿠키는 프록시 대상 서버의 것이라, 브라우저가 학습 API 주소만 다른 서버로 바꾸면 로그인한 계정과 다른 서버에 회원 번호로 요청이 가기 때문이다.</li>
-          <li>팝업은 <code>/popups</code>, 문의는 <code>/qa</code>, 문제는 <code>/learning/problem</code>, 오늘 현황은 <code>/learning/today</code>, 오답노트는 <code>/learning/notes</code>, 학습 기록은 <code>/learning/history</code>, 제출 이미지는 <code>/learning/review</code>, 채점은 <code>/learning/roi-grade</code>, 용어는 <code>/glossary</code>, 화면 분석은 <code>/api/v1/analyze/screen-roi</code>다.</li>
-          <li>영상 파일 주소는 이 값이 아니다. <code>src/imageBase.js</code>의 <code>IMAGE_BASE</code>이고, 값은 <code>https://kr.object.ncloudstorage.com/biz02gj</code>다.</li>
+          <li>개발 서버처럼 로컬이고 포트가 8000이 아니면 <code>API_BASE</code>는 <code>/__api</code>다. <code>vue.config.js</code>가 이를 <code>http://127.0.0.1:8000</code>으로 넘긴다. 포트 없는 로컬·직접 8000이면 <code>http://127.0.0.1:8000</code>, 그 외 호스트는 <code>http://연 호스트:8000</code>이다. 주소에 <code>?api=http://서버:8000</code>을 붙이거나 브라우저 <code>localStorage</code>의 <code>medlens_api_base</code>가 있으면 그 주소가 우선이다.</li>
+          <li>로그인은 <code>${API_BASE}/login</code>에 <code>credentials: 'include'</code>로 보내고, 로그아웃은 <code>POST ${API_BASE}/logout</code>으로 서버 세션을 끝낸다. 팝업은 <code>/popups</code>, 문의는 <code>/qa</code>, 문제는 <code>/learning/problem</code>, 오늘 현황은 <code>/learning/today</code>, 리뷰노트는 <code>/learning/notes</code>, 학습 기록은 <code>/learning/history</code>, 제출 이미지는 <code>/learning/review</code>, 채점은 <code>/learning/roi-grade</code>, 용어는 <code>/glossary</code>, 화면 분석은 <code>/api/v1/analyze/screen-roi</code>다.</li>
+          <li>영상 파일 주소는 이 값이 아니다. <code>src/imageBase.js</code>의 <code>IMAGE_BASE</code>이고, 값은 <code>https://kr.object.ncloudstorage.com/biz02gj</code>다. 다만 무릎 시리즈 경로(<code>/knee_series/</code>)는 공개 버킷에 없어서, <code>studyIdx</code>가 있으면 <code>${API_BASE}/learning/problem/{번호}/image?slice_index=</code>로 받는다.</li>
         </ol>
-        <pre><code>export const API_BASE = clean(process.env.VUE_APP_API_BASE) || hostApiBase() || 'http://127.0.0.1:8000'
-dropUntrustedOverride(API_BASE)   // 다른 저장값은 지운다</code></pre>
+        <pre><code>export const API_BASE = storedApiBase() || localDevProxyBase() || hostApiBase() || 'http://127.0.0.1:8000'
+const LOGIN_API = `${API_BASE}/login`</code></pre>
         <h3>확인하는 법</h3>
-        <p>이 PC에서 <code>http://127.0.0.1:8080</code>을 열면 Network의 <code>/learning/today</code>가 <code>127.0.0.1:8000</code>으로 가야 한다. 주소에 <code>?api=http://다른서버:8000</code>을 붙여도 요청 주소는 바뀌지 않아야 한다. 서버가 다른 곳에 있으면 실행할 때 <code>VUE_APP_API_BASE</code>와 <code>ACCOUNT_PROXY_TARGET</code>을 같은 서버로 함께 준다.</p>
+        <p>이 PC에서 <code>http://localhost:8080</code>을 열면 Network의 로그인·채점이 <code>/__api/...</code>로 나가야 한다. <code>192.168.20.242:8080</code>처럼 다른 주소로 열면 같은 호스트의 <code>:8000</code>으로 가야 한다. 서버가 다른 곳에 있으면 <code>?api=http://그주소:8000</code>을 한 번 붙인 뒤 새로고침한다. <code>localStorage</code>의 <code>medlens_api_base</code>를 지우면 다시 호스트 규칙으로 돌아간다. 무릎 제출 전에 한 번 다시 로그인해야 서버 쿠키가 생긴다.</p>
       </section>
 
       <section id="notify">
@@ -266,7 +265,7 @@ dropUntrustedOverride(API_BASE)   // 다른 저장값은 지운다</code></pre>
           <li>주소 <code>/</code>를 열면 세션이 없을 때 <code>IntroPage</code>가 렌더된다.</li>
           <li>헤더의 서비스 소개·사용 방법·이용 안내·FAQ는 같은 페이지의 해당 구역으로 스크롤한다.</li>
           <li>헤더·하단의 로그인은 <code>/login</code>, 히어로의 무료로 시작하기는 <code>/signup</code>으로 이동한다.</li>
-          <li>핵심 기능 카드의 "자세히 보기"·"사전 전체 보기"·"오답 노트 보기"도 <code>/login</code>으로 간다.</li>
+          <li>핵심 기능 카드의 "자세히 보기"·"사전 전체 보기"·"리뷰노트 보기"도 <code>/login</code>으로 간다.</li>
           <li>세션이 있는 채로 <code>/</code>를 열면 <code>/main</code>으로 보낸다. 이 화면은 로그인 API를 호출하지 않는다.</li>
         </ol>
         <h3>확인하는 법</h3>
@@ -287,10 +286,9 @@ dropUntrustedOverride(API_BASE)   // 다른 저장값은 지운다</code></pre>
         <h3>동작 순서</h3>
         <ol>
           <li>폼이 <code>login</code> 이벤트로 아이디와 비밀번호를 올린다.</li>
-          <li>먼저 <code>API_BASE</code>와 계정 프록시 대상이 같은 서버인지 본다. 다르면 요청 없이 "학습 서버 설정이 맞지 않아…"를 보여 준다.</li>
-          <li><code>POST /account-api/login</code>에 <code>{ userId, userPw }</code>를 한 번 보낸다. 401 은 "아이디 또는 비밀번호가 올바르지 않습니다.", 성공으로 보이지만 <code>ok</code>·양의 정수 <code>idx</code>·아이디가 아니면 실패다.</li>
-          <li>이어서 <code>GET /account-api/me</code>로 방금 받은 쿠키가 실제로 오가고 같은 회원(<code>idx</code>·아이디)인지 확인한다. 비밀번호를 다시 보내지 않는다.</li>
-          <li>둘 다 맞으면 <code>saveUserSession({ ...data, account_verified: true })</code> 후 <code>/main</code>으로 간다. 하나라도 틀리면 세션을 저장하지 않는다.</li>
+          <li>페이지가 <code>POST ${API_BASE}/login</code>에 <code>{ userId, userPw }</code>를 <code>credentials: 'include'</code>로 보낸다. 호스트는 <code>src/apiBase.js</code>다. 성공 시 서버 학습자 세션 쿠키도 받는다.</li>
+          <li><code>ok</code>가 아니면 <code>detail</code> 또는 <code>message</code>를 보여주고, 둘 다 없으면 "아이디 또는 비밀번호가 올바르지 않습니다."를 쓴다.</li>
+          <li>성공하면 <code>saveUserSession</code> 후 <code>/main</code>으로 간다.</li>
         </ol>
         <pre><code>await login(userId, userPw)   // POST /account-api/login → GET /account-api/me → saveUserSession
 this.$router.push('/main')</code></pre>
@@ -309,7 +307,7 @@ this.$router.push('/main')</code></pre>
           <li>키 이름은 <code>medlens_user</code>다.</li>
           <li>저장하는 필드는 <code>idx</code>, <code>user_id</code>, <code>user_name</code>, <code>mb_level</code>, <code>account_verified</code>뿐이다. <code>account_verified</code>는 같은 출처 쿠키로 본인 확인까지 한 로그인만 true 다. 예전 방식으로 로그인한 세션은 마이페이지·설정 전에 다시 로그인한다.</li>
           <li>읽기에 실패하면 <code>null</code>을 반환한다.</li>
-          <li><code>/main</code>·<code>/learning</code>·<code>/medical</code>·<code>/medical/review</code>·<code>/analyze</code> 헤더에서 이름(또는 아바타)을 누르면 로그아웃이 나온다. 누르면 <code>accountSession.logout()</code>이 서버 로그아웃을 확인한 뒤 이 키와 채점 저장 <code>medlens.review</code>(<code>reviewModel.clearReviewStorage()</code>)를 지우고 <code>/login</code>으로 간다. 이름은 세션이 있을 때만 그려서, 로그아웃 직후 <code>user_name</code>을 읽지 않는다.</li>
+          <li><code>/main</code>·<code>/learning</code>·<code>/medical</code>·<code>/medical/review</code>·<code>/analyze</code> 헤더에서 이름(또는 아바타)을 누르면 메뉴가 나온다. 누르면 <code>logoutUserSession</code>이 <code>POST ${API_BASE}/logout</code>으로 서버 쿠키 세션을 끝내고, 이 키와 채점 저장 <code>medlens.review</code>를 지운 뒤 <code>/login</code>으로 간다. 이름은 세션이 있을 때만 그려서, 로그아웃 직후 <code>user_name</code>을 읽지 않는다.</li>
         </ol>
         <pre>sessionStorage.getItem('medlens_user')</pre>
         <h3>확인하는 법</h3>
@@ -342,13 +340,13 @@ this.$router.push('/main')</code></pre>
       <section id="home">
         <h2>메인 홈</h2>
         <h3>무엇을 하나</h3>
-        <p>로그인한 사용자가 인사말·학습 바로가기·오늘의 학습 현황을 보는 홈 화면이다. 왼쪽 위에는 서버에서 받은 이벤트 홍보 팝업이 여러 장 뜨고, 제목 줄을 끌어 각 팝업을 옮길 수 있다. 헤더 "문의하기"로 채팅 창을 연다. 현황은 오늘 그 계정이 제출한 부위만 나온다. 오답노트는 <code>/note</code>, 학습 기록은 <code>/history</code>, 화면 분석은 <code>/analyze</code>로 이동한다. 헤더 "마이페이지"는 <code>/mypage</code>로 이동한다. 마이페이지는 서버의 내 정보·학습 통계를 보여 준다.</p>
+        <p>로그인한 사용자가 인사말·학습 바로가기·오늘의 학습 현황을 보는 홈 화면이다. 왼쪽 위에는 서버에서 받은 이벤트 홍보 팝업이 여러 장 뜨고, 제목 줄을 끌어 각 팝업을 옮길 수 있다. 헤더 "문의하기"로 채팅 창을 연다. 현황은 오늘 그 계정이 제출한 부위만 나온다. 리뷰노트는 <code>/note</code>, 학습 기록은 <code>/history</code>, 화면 분석은 <code>/analyze</code>로 이동한다. 마이페이지 링크는 아직 목업이다.</p>
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>src/components/main/indexPage.vue</code> — 홈 레이아웃, 세션 이름, 바로가기, 부위별 현황 카드. 팝업과 채팅을 붙인다.</li>
           <li><code>src/components/main/PageFrame.vue</code> — 공통 헤더와 문의 채팅. 홈은 본문이 내용만큼 늘어나고, 학습·풀이·리뷰·화면 분석처럼 <code>fill</code>인 화면만 본문을 세로로 채워 높이를 고정한다.</li>
           <li><code>src/components/main/BrandMark.vue</code> — 로고 Mediscan Note. 스캔 칸 아이콘, Medi 남색, scan 파랑, Note 청록. 로그인·가입의 어두운 배경은 흰 글씨다.</li>
-          <li><code>src/components/main/MainHeader.vue</code> — Mediscan Note, 학습·오답노트·화면 분석·마이페이지·문의하기, 이름·로그아웃. 로고는 <code>/main</code>으로 간다. 화면이 좁으면 로고와 이름이 윗줄, 메뉴가 아랫줄이다.</li>
+          <li><code>src/components/main/MainHeader.vue</code> — Mediscan Note, 학습·리뷰노트·화면 분석·마이페이지·문의하기, 이름·로그아웃. 로고는 <code>/main</code>으로 간다. 화면이 좁으면 로고와 이름이 윗줄, 메뉴가 아랫줄이다.</li>
           <li><code>src/components/main/EventPromoPopups.vue</code> — 이벤트 팝업 여러 장. 왼쪽 위에 두고, 제목 줄로 옮긴다. 닫기는 장마다 따로다.</li>
           <li><code>src/components/main/eventPopups.js</code> — <code>GET /popups</code>로 이벤트 목록을 받는다. "오늘 하루 보지 않기"만 그 날짜에 숨긴다.</li>
           <li><code>src/components/main/InquiryChat.vue</code> — 문의 채팅 창. 열고 있는 동안 최근 문의를 다시 읽는다.</li>
@@ -362,8 +360,8 @@ this.$router.push('/main')</code></pre>
           <li><code>indexPage</code>가 <code>getUserSession()</code>으로 이름을 읽어 "안녕하세요, {이름}님"을 보여 준다.</li>
           <li>헤더 로고 Mediscan Note를 누르면 <code>/main</code>으로 간다. "학습하기"와 "학습 시작"은 <code>/learning</code>으로 이동한다. 헤더의 "학습"도 같다. 홈 카드 "화면 분석"과 헤더 "화면 분석"은 <code>/analyze</code>로 이동한다.</li>
           <li>헤더 오른쪽 이름·아바타를 누르면 로그아웃이 나온다. 누르면 세션과 채점 저장을 지우고 <code>/login</code>으로 간다.</li>
-          <li>오답노트는 <code>/note</code>로, 학습 기록 카드는 <code>/history</code>로 이동한다. 헤더 "마이페이지"는 <code>/mypage</code>로 이동한다.</li>
-          <li><code>fetchTodayStudyStats()</code>가 세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/today?user_idx=</code>를 호출한다. <code>items</code>의 <code>part_label</code>, <code>study_minutes</code>, <code>problem_count</code>, <code>correct_rate</code>를 학습 시간·학습 문제·정답률로 보여 준다. 오늘 제출이 없으면 안내 문구를 보여 준다.</li>
+          <li>리뷰노트는 <code>/note</code>로, 학습 기록 카드는 <code>/history</code>로 이동한다. 마이페이지는 화면이 없어 클릭해도 이동하지 않는다.</li>
+          <li><code>fetchTodayStudyStats()</code>가 세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/today?user_idx=</code>를 호출한다. <code>items</code>의 <code>part_label</code>, <code>study_minutes</code>, <code>problem_count</code>, <code>correct_rate</code>를 학습 시간·학습 문제·일치률로 보여 준다. 오늘 제출이 없으면 안내 문구를 보여 준다.</li>
           <li><code>fetchVisibleEventPopups()</code>가 <code>GET ${API_BASE}/popups</code>를 호출한다. 각 항목의 <code>pp_title</code>, <code>pp_image_url</code>, <code>pp_link</code>, <code>start_at</code>·<code>end_at</code>을 쓰고 <code>pp_sort</code> 순으로 화면 왼쪽 위부터 나란히 띄운다. 기간은 제목 옆에 붙인다. 오늘 "오늘 하루 보지 않기"를 누른 <code>idx</code>는 빼다.</li>
           <li>제목 줄을 누른 채 움직이면 그 팝업만 따라간다. ×와 "참여하기", "오늘 하루 보지 않기", "닫기" 위에서는 끌기가 시작되지 않는다. 옮긴 위치는 새로고침하면 왼쪽 위로 돌아간다.</li>
           <li>한 장의 × 또는 "닫기"는 그 장만 지금 화면에서 없앤다. 저장하지 않아서 홈을 다시 열면 그 장도 다시 뜬다. 다른 장은 그대로 남는다.</li>
@@ -422,7 +420,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           <li>부위와 영상 종류가 모두 있을 때만 "학습 시작"이 켜진다.</li>
           <li>"학습 시작"은 <code>/medical?region=...&amp;type=...</code>로 간다.</li>
           <li>상단 이름·아바타를 누르면 로그아웃이 나온다. 누르면 세션과 채점 저장을 지우고 <code>/login</code>으로 간다. 헤더는 홈과 같다.</li>
-          <li>사이드바 "오답노트"는 <code>/note</code>로, "학습 기록"은 <code>/history</code>로 간다. 북마크·리포트·설정은 아직 화면이 없다. "가이드 보기"는 <code>showMessage</code>로 "사용 가이드 화면은 아직 연결 전입니다."를 띄운다.</li>
+          <li>사이드바 "리뷰노트"는 <code>/note</code>로, "학습 기록"은 <code>/history</code>로 간다. 북마크·리포트·설정은 아직 화면이 없다. "가이드 보기"는 <code>showMessage</code>로 "사용 가이드 화면은 아직 연결 전입니다."를 띄운다.</li>
         </ol>
         <pre><code>부위 chest + 영상 x-ray
   → /medical?region=chest&amp;type=x-ray</code></pre>
@@ -430,52 +428,52 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           사이드바의 북마크·리포트·설정 화면은 아직 없다.
         </div>
         <h3>확인하는 법</h3>
-        <p>로그인 후 <code>/learning</code>을 연다. 처음에는 선택이 없고 "학습 시작"이 꺼져 있어야 한다. 창 높이를 줄이거나 좁은 기기에서 열어도 "학습 시작"은 패널 아래에 보이고, 부위·영상 카드만 위쪽에서 스크롤되어야 한다. 부위와 영상 종류를 고른 뒤 "학습 시작"을 누르면 풀이 화면으로 가야 한다. 왼쪽 "오답노트"는 <code>/note</code>로, "학습 기록"은 <code>/history</code>로 가야 한다. 상단 이름에서 로그아웃하면 로그인 화면으로 간다. 메인 홈의 "학습하기"로도 이 화면이 열린다.</p>
+        <p>로그인 후 <code>/learning</code>을 연다. 처음에는 선택이 없고 "학습 시작"이 꺼져 있어야 한다. 창 높이를 줄이거나 좁은 기기에서 열어도 "학습 시작"은 패널 아래에 보이고, 부위·영상 카드만 위쪽에서 스크롤되어야 한다. 부위와 영상 종류를 고른 뒤 "학습 시작"을 누르면 풀이 화면으로 가야 한다. 왼쪽 "리뷰노트"는 <code>/note</code>로, "학습 기록"은 <code>/history</code>로 가야 한다. 상단 이름에서 로그아웃하면 로그인 화면으로 간다. 메인 홈의 "학습하기"로도 이 화면이 열린다.</p>
       </section>
 
       <section id="note">
-        <h2>오답노트</h2>
+        <h2>리뷰노트</h2>
         <h3>무엇을 하나</h3>
-        <p>틀린 문제와 부분 정답만 카드로 보여 주고, 고른 부위·영상으로 다시 풀게 한다. 화면 왼쪽은 학습 설정의 메뉴와 같고, 위 헤더는 홈과 같다.</p>
+        <p>불일치·부분일치만 카드로 보여 주고, 고른 부위·영상으로 다시 풀게 한다. 화면 왼쪽은 학습 설정의 메뉴와 같고, 위 헤더는 홈과 같다.</p>
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>src/components/note/WrongNotePage.vue</code> — 필터, 정렬, 카드, 페이지, 다시 풀기.</li>
-          <li><code>src/components/note/wrongNote.js</code> — <code>GET /learning/reviews</code>와 거르기·정렬·8장 나누기.</li>
-          <li><code>src/components/learning/LearningSidebar.vue</code> — 왼쪽 메뉴. "오답노트"가 이 화면에서 켜진다.</li>
+          <li><code>src/components/note/wrongNote.js</code> — <code>GET /learning/reviews</code>와 거르기·정렬·8장 나누기. <code>solution_label</code>은 <code>normalizeResult</code>로 일치·부분일치·불일치로 맞춘다.</li>
+          <li><code>src/components/learning/LearningSidebar.vue</code> — 왼쪽 메뉴. "리뷰노트"가 이 화면에서 켜진다.</li>
         </ul>
         <h3>동작 순서</h3>
         <ol>
-          <li>주소 <code>/note</code>는 세션이 없으면 <code>/login</code>으로 보낸다. 홈 카드와 헤더 "오답노트"도 이 주소로 온다.</li>
-          <li>세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/reviews?user_idx=&amp;limit=200</code>를 호출한다. 서버 기본은 오답(<code>W</code>)·부분정답(<code>H</code>)이다.</li>
-          <li>응답 <code>items</code>는 최신 제출이 앞이다. 화면은 같은 문제의 첫 항목만 남긴다. 병명, 부위, 영상 종류, 날짜, 제출 이미지를 카드에 그린다. <code>image_url</code>이 상대 경로면 <code>IMAGE_BASE</code> 뒤에 붙인다. 부위 코드 <code>1~4</code>는 <code>brain</code>·<code>chest</code>·<code>abdomen</code>·<code>knee</code>, 영상 코드 <code>1~3</code>은 <code>x-ray</code>·<code>CT</code>·<code>MRI</code>로 바꿔 다시 풀기 주소에 쓴다.</li>
-          <li>"전체", "오답", "부분정답"으로 거르고, "최신순"과 "오래된순"으로 바꾼다. 한 화면에 8장이고, 항목이 있으면 아래 번호로 넘긴다. 한 페이지여도 번호는 보인다.</li>
+          <li>주소 <code>/note</code>는 세션이 없으면 <code>/login</code>으로 보낸다. 홈 카드와 헤더 "리뷰노트"도 이 주소로 온다.</li>
+          <li>세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/reviews?user_idx=&amp;limit=200</code>를 호출한다. 서버 기본은 불일치(<code>W</code>)·부분일치(<code>H</code>)이다.</li>
+          <li>응답 <code>items</code>는 최신 제출이 앞이다. 화면은 같은 문제의 첫 항목만 남긴다. 병명, 부위, 영상 종류, 날짜, 제출 이미지를 카드에 그린다. <code>image_url</code>이 상대 경로면 <code>IMAGE_BASE</code> 뒤에 붙이고, <code>/knee_series/</code>이면 <code>study_idx</code>로 문제 API 이미지를 쓴다. 부위 코드 <code>1~4</code>는 <code>brain</code>·<code>chest</code>·<code>abdomen</code>·<code>knee</code>, 영상 코드 <code>1~3</code>은 <code>x-ray</code>·<code>CT</code>·<code>MRI</code>로 바꿔 다시 풀기 주소에 쓴다.</li>
+          <li>"전체", "불일치", "부분일치"로 거르고, "최신순"과 "오래된순"으로 바꾼다. 한 화면에 8장이고, 항목이 있으면 아래 번호로 넘긴다. 한 페이지여도 번호는 보인다.</li>
           <li>"다시 풀기"는 그 카드의 <code>region</code>, <code>type</code>, <code>idx</code>로 <code>/medical</code>에 간다. 풀이 화면은 그 <code>idx</code> 영상을 불러온다.</li>
-          <li>항목이 없으면 "틀린 문제가 아직 없어요."를 보여 준다. API가 꺼지면 그 문장만 남고 메뉴는 그대로다.</li>
+          <li>항목이 없으면 "복습할 문제가 아직 없어요."를 보여 준다. API가 꺼지면 그 문장만 남고 메뉴는 그대로다.</li>
         </ol>
         <pre><code>GET ${API_BASE}/learning/reviews?user_idx=&amp;limit=200
   → { items: [{ review_idx, study_idx, st_part, st_modal, disease, solution, solution_label, image_url, created_at }] }</code></pre>
         <h3>확인하는 법</h3>
-        <p>로그인 후 헤더 "오답노트" 또는 홈 카드를 누른다. 주소가 <code>/note</code>이고 왼쪽 메뉴의 오답노트가 켜져 있어야 한다. 카드 수와 배지가 <code>/learning/reviews?user_idx=</code>의 오답·부분정답과 같아야 한다. 같은 문제가 여러 번이면 가장 최근 카드만 남는다. "오답"만 누르면 부분정답이 빠지고, "다시 풀기"는 그 부위의 풀이 화면으로 가야 한다. 제출이 없으면 안내 문구만 보인다.</p>
+        <p>로그인 후 헤더 "리뷰노트" 또는 홈 카드를 누른다. 주소가 <code>/note</code>이고 왼쪽 메뉴의 리뷰노트가 켜져 있어야 한다. 카드 수와 배지가 <code>/learning/reviews?user_idx=</code>의 불일치·부분일치와 같아야 한다. 같은 문제가 여러 번이면 가장 최근 카드만 남는다. "불일치"만 누르면 부분일치가 빠지고, "다시 풀기"는 그 부위의 풀이 화면으로 가야 한다. 제출이 없으면 안내 문구만 보인다.</p>
       </section>
 
       <section id="history">
         <h2>학습 기록</h2>
         <h3>무엇을 하나</h3>
-        <p>지금까지 제출한 문제를 기간별로 모아, 진도·정답률·ROI 정확도와 최근 활동 표로 보여 준다. 화면 왼쪽은 학습 설정의 메뉴와 같고, 위 헤더는 홈과 같다.</p>
+        <p>지금까지 제출한 문제를 기간별로 모아, 진도·일치률·ROI 정확도와 최근 활동 표로 보여 준다. 화면 왼쪽은 학습 설정의 메뉴와 같고, 위 헤더는 홈과 같다.</p>
         <h3>어느 파일인가</h3>
         <ul>
           <li><code>src/components/history/LearningHistoryPage.vue</code> — 기간 선택, 현황 카드, 최근 활동 표, 더보기.</li>
-          <li><code>src/components/history/history.js</code> — <code>GET /learning/history</code>, 기간 거르기, 진도·정답률·ROI 정확도 계산.</li>
+          <li><code>src/components/history/history.js</code> — <code>GET /learning/history</code>, 기간 거르기, 진도·일치률·ROI 정확도 계산.</li>
           <li><code>src/components/learning/LearningSidebar.vue</code> — 왼쪽 메뉴. "학습 기록"이 이 화면에서 켜진다.</li>
         </ul>
         <h3>동작 순서</h3>
         <ol>
           <li>주소 <code>/history</code>는 세션이 없으면 <code>/login</code>으로 보낸다. 홈의 학습 기록 카드와 왼쪽 메뉴 "학습 기록"도 이 주소로 온다.</li>
-          <li>세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/history?user_idx=</code>를 호출한다. 응답은 그 사용자의 제출 전체(정답·부분정답·오답)와 활성 문제 수 <code>total_studies</code>다. 최신 제출이 앞이다.</li>
+          <li>세션 <code>idx</code>로 <code>GET ${API_BASE}/learning/history?user_idx=</code>를 호출한다. 응답은 그 사용자의 제출 전체(일치·부분일치·불일치)와 활성 문제 수 <code>total_studies</code>다. 최신 제출이 앞이다.</li>
           <li>기간은 전체, 최근 7일, 최근 30일이다. 고르면 현황과 표가 그 날짜의 제출만 쓴다.</li>
-          <li>진도는 기간 안 서로 다른 문제 수 / <code>total_studies</code>다. 정답률은 그 문제들의 가장 최근 결과가 정답(<code>C</code>)인 비율이다.</li>
-          <li>ROI 정확도는 좌표 IoU 평균이 아니다. 서버는 IoU를 저장하지 않아서, 기간 안 제출 중 정답(<code>C</code>) 비율을 보여 준다.</li>
-          <li>표는 학습 일시, 케이스, 모드(문제 풀이), 소견, 결과다. 케이스 칸의 작은 그림은 <code>image</code>가 상대 경로면 <code>IMAGE_BASE</code> 뒤에 붙인다. 처음 4건만 보이고 "더보기"는 4건씩 연다. "전체 학습 기록 보기"는 남은 행을 한 번에 연다.</li>
+          <li>진도는 기간 안 서로 다른 문제 수 / <code>total_studies</code>다. 일치률은 그 문제들의 가장 최근 결과가 일치(<code>C</code>)인 비율이다.</li>
+          <li>ROI 정확도는 좌표 IoU 평균이 아니다. 서버는 IoU를 저장하지 않아서, 기간 안 제출 중 일치(<code>C</code>) 비율을 보여 준다.</li>
+          <li>표는 학습 일시, 케이스, 모드(문제 풀이), 소견, 결과다. 케이스 칸의 작은 그림은 <code>image</code>가 상대 경로면 <code>IMAGE_BASE</code> 뒤에 붙이고, <code>/knee_series/</code>이면 <code>study_idx</code>로 문제 API 이미지를 쓴다. 처음 4건만 보이고 "더보기"는 4건씩 연다. "전체 학습 기록 보기"는 남은 행을 한 번에 연다.</li>
           <li>케이스 행을 누르면 <code>region</code>, <code>type</code>, <code>idx</code>, <code>review</code>로 <code>/medical/review</code>에 간다. <code>review</code>는 그 줄의 제출 번호다. 리뷰 화면이 이 번호로 저장해 둔 채점 이미지를 불러온다.</li>
           <li>기간 안 제출이 없으면 "이 기간에 학습 기록이 없어요."를 보여 준다. API가 꺼지면 그 문장만 남고 메뉴는 그대로다.</li>
         </ol>
@@ -555,7 +553,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
         </ul>
         <h3>동작 순서</h3>
         <ol>
-          <li>주소 <code>/analyze</code>는 로그인 세션이 있을 때만 열린다. 상단은 홈과 같은 Mediscan Note, 학습, 오답노트, 화면 분석, 마이페이지, 문의하기, 사용자 메뉴다. 홈 카드와 헤더의 "화면 분석"이 이 주소로 온다.</li>
+          <li>주소 <code>/analyze</code>는 로그인 세션이 있을 때만 열린다. 상단은 홈과 같은 Mediscan Note, 학습, 리뷰노트, 화면 분석, 마이페이지, 문의하기, 사용자 메뉴다. 홈 카드와 헤더의 "화면 분석"이 이 주소로 온다.</li>
           <li>"화면 공유 시작"이 브라우저 화면 공유를 받는다. 취소하면 "화면 공유가 취소되었거나 권한이 없습니다."를 보여 준다.</li>
           <li>공유된 영상 위에서 휠로 스크롤하고, 드래그로 네모 박스를 그린다. 가로·세로가 8픽셀보다 커야 분석 버튼이 켜진다.</li>
           <li>"선택 영역 분석"은 왼쪽 "분석"에서 고른 대상으로 박스를 자른다. 뇌 CT는 <code>POST ${API_BASE}/api/v1/analyze/screen-roi</code>다. 흉부 X-ray는 <code>GET ${API_BASE}/api/v1/thorax/health</code>로 모델이 준비됐는지 본 뒤 <code>POST ${API_BASE}/api/v1/thorax/analyze/screen-roi</code>로 소견 박스와 점수를 받고, 판독 버튼은 없다. 복부 CT는 <code>GET ${API_BASE}/api/v1/abdomen/health</code>로 모델·판독문 상태를 본 뒤 <code>POST ${API_BASE}/api/v1/abdomen/analyze/screen-roi</code>로 장기 박스·점수·overlay를 받는다. <code>classification.task</code>는 <code>abdomen</code>이고, 장기 점수는 그 장기 박스의 최고 신뢰도다. 질환 진단이 아니라 장기 위치 학습용이다. 뇌 MRI는 <code>GET ${API_BASE}/api/v1/brain-mri/health</code> 뒤 <code>POST ${API_BASE}/api/v1/analyze/brain-mri</code>로 5질환 위치와 점수를 받는다. 파일 이름은 <code>mri.png</code>이고, 시퀀스를 고를 수 있다. DICOM은 보내지 않는다. 무릎 MRI는 촬영면·범위와 함께 <code>POST ${API_BASE}/api/v1/knee/screen-roi</code>로 이상·ACL·반월판과 ACL 위치를 받는다. ACL 위치는 시상면과 슬라이스 전체일 때 의미가 있다.</li>
@@ -632,12 +630,12 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
           <li><code>buildGradeRoi</code>가 각 ROI를 0~1 비율 박스로 바꾼다. 하나면 그 도형(원이면 원)으로 보내고, 여러 개면 전체를 감싼 박스로 보낸다. 그린 목록은 <code>userRois</code>로 남긴다.</li>
           <li>원은 중심 <code>cx</code>, <code>cy</code>와 <code>radius</code>로, 박스는 <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>로 <code>FormData</code>에 넣는다. 이미지 파일도 함께 보낸다.</li>
           <li>여러 장이면 <code>slice_index</code>(0부터)와 현재 슬라이스 <code>image_path</code>를 추가로 넣는다. 한 장이면 이 두 필드를 보내지 않는다.</li>
-          <li>부위와 영상 종류로 판독 주소를 고른다. 뇌 CT·흉부 X-ray·복부 CT는 <code>POST ${API_BASE}/learning/roi-grade</code>다. 흉부는 흉부 모델, 복부(<code>st_part=3</code>)는 복부 장기 검출 모델로 채점한다. 응답 <code>recall</code>은 포함률, <code>iou</code>는 ROI 정확도, <code>classification.task</code>는 <code>abdomen</code>이다. 뇌 MRI는 <code>POST ${API_BASE}/api/v1/analyze/brain-mri</code>로 PNG/JPEG 한 장을 판독하고, 뇌 CT 출혈 모델은 쓰지 않는다. 무릎 MRI는 <code>CaseSolvingPage.vue</code>의 <code>requestReading</code>이 <code>gradeKneeRoi</code>로 같은 출처 <code>POST /account-api/learning/roi-grade/knee</code>(계정 프록시 경유)에 <code>study_idx</code>, <code>roi_type=box</code>, <code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>, <code>slice_index</code>(0부터, 9번째 장은 8)만 폼으로 보낸다. 이미지 파일과 회원 번호는 보내지 않는다. 서버는 로그인 쿠키의 학습자 번호로 <code>review_node.rn_u_idx</code>를 정한다. 프록시는 <code>X-Medlens-Account</code>(화면 계정)와 쿠키 계정이 같을 때만 넘기고, 다르면 412 "다른 계정이 로그인되어 있어 제출하지 않았어요"다. 승인된 기준 영역이 없는 문제는 서버가 미채점(<code>graded=false</code>)으로 답하고 저장하지 않는다.</li>
-          <li><code>readingGrade.js</code>의 <code>kneeAsGrade</code>는 <code>reading.findings</code>가 있으면 <code>result</code>를 서버 값 그대로 둔다. 정답·부분정답·오답이면 그 배지를 쓴다. <code>iou</code>는 정확도, <code>recall</code>은 포함률, <code>reference_bbox</code>는 <code>abnormality_bbox</code>로 넘겨 정답 박스를 그린다. <code>overlay_summary</code>는 <code>reading.summary</code>다. <code>reading</code>이 없을 때만 미채점 분기를 쓴다.</li>
+          <li>부위와 영상 종류로 판독 주소를 고른다. 뇌 CT·흉부 X-ray·복부 CT는 <code>POST ${API_BASE}/learning/roi-grade</code>다. 흉부는 흉부 모델, 복부(<code>st_part=3</code>)는 복부 장기 검출 모델로 채점한다. 응답 <code>recall</code>은 포함률, <code>iou</code>는 ROI 정확도, <code>classification.task</code>는 <code>abdomen</code>이다. 뇌 MRI는 <code>POST ${API_BASE}/api/v1/analyze/brain-mri</code>로 PNG/JPEG 한 장을 판독하고, 뇌 CT 출혈 모델은 쓰지 않는다. 무릎 MRI는 문제를 열 때 <code>fetchKneeTask</code>로 <code>GET ${API_BASE}/learning/knee/task?study_idx=</code>에서 <code>problem_token</code>을 받고, 영상은 0번 장부터 연다. 제출은 현재 장 <code>slice_index</code>(0부터)와 <code>problem_token</code>을 <code>POST ${API_BASE}/learning/roi-grade/knee</code>로 보낸다. 서버는 범위 안의 어느 장이든 승인된 기준 ROI(정규화 좌표)로 채점한다. 토큰이 없으면 <code>token_invalid</code>다.</li>
+          <li><code>readingGrade.js</code>의 <code>kneeAsGrade</code>는 <code>reading.findings</code>가 있으면 <code>result</code>를 <code>normalizeResult</code>로 일치·부분일치·불일치로 맞춘다. 그 배지를 쓴다. <code>iou</code>는 정확도, <code>recall</code>은 포함률, <code>reference_bbox</code>는 <code>abnormality_bbox</code>로 넘겨 정답 박스를 그린다. <code>overlay_summary</code>는 <code>reading.summary</code>다. <code>reading</code>이 없을 때만 미채점 분기를 쓴다.</li>
           <li>끝나면 결과와 <code>userRois</code>, 슬라이스 정보를 <code>sessionStorage</code> 키 <code>medlens.review</code>에 저장하고 <code>/medical/review</code>로 이동한다. 흉부면 응답 <code>learning_note</code>가 소견 해설이다. 리뷰의 소견 제목은 <code>classification.task</code>가 <code>thorax</code>이면 흉부 소견, <code>abdomen</code>이면 복부 장기, <code>brain-mri</code>이면 뇌 MRI, <code>knee-mri</code>이면 무릎 MRI, <code>hemorrhage</code>이면 출혈이다.</li>
         </ol>
         <h3>확인하는 법</h3>
-        <p>이미지를 불러온 뒤 제출만 누르면 SweetAlert2로 ROI 안내가 나온다. 박스를 두 개 이상 그린 뒤 제출하면 주소가 <code>/medical/review</code>로 바뀌고, 개발자 도구 <code>medlens.review</code> JSON에 <code>userRois</code> 배열이 있어야 하며 리뷰 영상에 주황 점선이 여러 개 보여야 한다. 여러 장이면 JSON에 <code>sliceIndex</code>, <code>imagePath</code>가 있어야 한다. 무릎 MRI는 9번째 장(<code>slice_index=8</code>)에서 관절 가운데를 그리면 정답, 모서리만 그리면 오답이 나와야 한다. 문구는 뇌 CT와 같다. 정답은 "정답 병변을 잘 포함했습니다.", 부분정답은 일부만 겹친다는 문장, 오답은 거의 겹치지 않는다는 문장이다. 요약에는 포함률(<code>recall</code>)만 보이고 ROI 정확도 칸은 없다. <code>iou</code>는 저장 JSON에만 남는다. <code>reference_bbox</code>가 정답 박스로 그려진다. 소견 목록에 ACL 점수와 판정이 있고, 반월판은 시상면 모델이 없어 평가하지 않음이 정상이다. FastAPI를 재시작하지 않으면 회원 번호 없는 미채점 응답만 받는다. 용량이 크면 오버레이 이미지 문자열은 빼고 다시 저장한다.</p>
+        <p>이미지를 불러온 뒤 제출만 누르면 SweetAlert2로 ROI 안내가 나온다. 박스를 두 개 이상 그린 뒤 제출하면 주소가 <code>/medical/review</code>로 바뀌고, 개발자 도구 <code>medlens.review</code> JSON에 <code>userRois</code> 배열이 있어야 하며 리뷰 영상에 주황 점선이 여러 개 보여야 한다. 여러 장이면 JSON에 <code>sliceIndex</code>, <code>imagePath</code>가 있어야 한다. 무릎 MRI는 9번째 장(<code>slice_index=8</code>)에서 관절 가운데를 그리면 일치, 모서리만 그리면 불일치가 나와야 한다. 문구는 뇌 CT와 같다. 일치는 "정답 병변을 잘 포함했습니다.", 부분일치는 일부만 겹친다는 문장, 불일치는 거의 겹치지 않는다는 문장이다. 요약에는 포함률(<code>recall</code>)만 보이고 ROI 정확도 칸은 없다. <code>iou</code>는 저장 JSON에만 남는다. <code>reference_bbox</code>가 정답 박스로 그려진다. 소견 목록에 ACL 점수와 판정이 있고, 반월판은 시상면 모델이 없어 평가하지 않음이 정상이다. FastAPI를 재시작하지 않으면 회원 번호 없는 미채점 응답만 받는다. 용량이 크면 오버레이 이미지 문자열은 빼고 다시 저장한다.</p>
       </section>
 
       <section id="glossary">
@@ -677,12 +675,12 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
         <h3>동작 순서</h3>
         <ol>
           <li>제출 <code>POST /learning/roi-grade</code>는 채점 이미지와 함께 포함률, IoU, 위치 요약, 출혈·germinoma 소견, MRI 슬라이스 번호를 <code>review_node</code>에 넣는다.</li>
-          <li>주소에 <code>review</code>가 있으면 세션 <code>idx</code>로 두 요청을 한다. 채점 이미지는 <code>GET ${API_BASE}/learning/review?idx=&amp;user_idx=</code>다. <code>idx</code>는 제출 번호다. 응답 <code>image</code>가 채점 이미지이고, 상대 경로면 <code>IMAGE_BASE</code> 뒤에 붙인다. <code>recall</code>·<code>iou</code>·<code>overlay_summary</code>·<code>findings</code>·<code>slice_index</code>로 결과 요약을 그린다. 다시 풀 수 있는지는 <code>GET ${API_BASE}/learning/reviews/{번호}?user_idx=</code>의 <code>problem</code>이다. <code>problem</code>이 없으면 "다시 제출"을 숨긴다. 이 상세 요청이 실패하면 예전처럼 저장 응답의 문제 번호로 다시 제출할 수 있다. 예전 제출은 요약 칸이 비어 포함률이 <code>—</code>다.</li>
-          <li><code>review</code>가 없으면 처음 데이터는 목업이다. <code>usingMock</code>이 참이고 판정은 "부분정답"이다. 목업에도 출혈·생식세포종양 예시가 있다.</li>
+          <li>주소에 <code>review</code>가 있으면 세션 <code>idx</code>로 두 요청을 한다. 채점 이미지는 <code>GET ${API_BASE}/learning/review?idx=&amp;user_idx=</code>다. <code>idx</code>는 제출 번호다. 응답 <code>image</code>가 채점 이미지다. <code>/stylesheets</code> 등 공개 경로는 <code>IMAGE_BASE</code> 뒤에 붙이고, <code>/knee_series/</code>이면 <code>study_idx</code>·장 번호로 <code>GET ${API_BASE}/learning/problem/{번호}/image?slice_index=</code>를 쓴다. <code>slice_index</code>가 비면 경로의 <code>slice_000</code>에서 읽는다. <code>recall</code>·<code>iou</code>·<code>overlay_summary</code>·<code>findings</code>·<code>slice_index</code>로 결과 요약을 그린다. 다시 풀 수 있는지는 <code>GET ${API_BASE}/learning/reviews/{번호}?user_idx=</code>의 <code>problem</code>이다. <code>problem</code>이 없으면 "다시 제출"을 숨긴다. 이 상세 요청이 실패하면 예전처럼 저장 응답의 문제 번호로 다시 제출할 수 있다. 예전 제출은 요약 칸이 비어 포함률이 <code>—</code>다.</li>
+          <li><code>review</code>가 없으면 처음 데이터는 목업이다. <code>usingMock</code>이 참이고 판정은 "부분일치"이다. 목업에도 출혈·생식세포종양 예시가 있다.</li>
           <li><code>mounted</code>에서 <code>review</code>가 없을 때만 <code>medlens.review</code>를 읽는다. <code>gradeResult</code>가 없으면 목업을 유지한다.</li>
-          <li>있으면 목업 표시를 끄고 저장한 채점, 이미지 경로, 사용자 ROI, 오버레이, <code>sliceIndex</code>/<code>sliceTotal</code>을 쓴다.</li>
+          <li>있으면 목업 표시를 끄고 저장한 채점, 이미지 경로(<code>imagePath</code>·<code>studyIdx</code>·<code>sliceIndex</code>), 사용자 ROI, 오버레이, <code>sliceTotal</code>을 쓴다. 무릎 경로도 위와 같이 문제 API 이미지로 연다.</li>
           <li>요약의 "병명 해설"은 <code>gradeResult.learning_note</code>가 있으면 그 이름, 요약, 영상 소견, 함정을 보여 준다. "주요 영상 소견" 제목은 <code>classification.task</code>를 따른다. <code>hemorrhage</code>만 출혈(ICH)과 Germinoma 막대이고, <code>thorax</code>는 흉부 소견, <code>abdomen</code>은 복부 장기, <code>brain-mri</code>는 뇌 MRI, <code>knee-mri</code>는 무릎 MRI다. <code>germinoma</code>가 <code>null</code>이면 Germinoma 줄은 생략한다. 복부 CT도 포함률(<code>recall</code>)을 보여 준다.</li>
-          <li>무릎 MRI의 <code>result</code>가 정답·부분정답·오답이면 배지와 문구는 뇌 CT와 같다. 정답은 "정답 병변을 잘 포함했습니다.", 부분정답은 일부만 겹친다는 문장, 오답은 거의 겹치지 않는다는 문장이다. <code>recall</code>은 포함률이다. <code>iou</code>는 저장만 하고 요약의 ROI 정확도 칸은 그리지 않는다. <code>abnormality_bbox</code>가 있으면 정답 박스로 그린다. 소견 목록은 <code>label_ko</code>, <code>verdict</code>, <code>prob</code>다. <code>status</code>가 <code>not_evaluated</code>이면 점수 대신 <code>reason</code>이다. 뇌 MRI의 <code>판독</code> 문장은 무릎에 쓰지 않는다.</li>
+          <li>무릎 MRI의 <code>result</code>가 일치·부분일치·불일치이면 배지와 문구는 뇌 CT와 같다. 일치는 "정답 병변을 잘 포함했습니다.", 부분일치는 일부만 겹친다는 문장, 불일치는 거의 겹치지 않는다는 문장이다. <code>recall</code>은 포함률이다. <code>iou</code>는 저장만 하고 요약의 ROI 정확도 칸은 그리지 않는다. <code>abnormality_bbox</code>가 있으면 정답 박스로 그린다. 소견 목록은 <code>label_ko</code>, <code>verdict</code>, <code>prob</code>다. <code>status</code>가 <code>not_evaluated</code>이면 점수 대신 <code>reason</code>이다. 뇌 MRI의 <code>판독</code> 문장은 무릎에 쓰지 않는다.</li>
           <li>오버레이는 저장된 경로가 우선이고, 없으면 응답의 base64 PNG를 이미지 주소로 만든다.</li>
           <li>리뷰 영상은 <code>XrayViewer.vue</code>다. <code>drawable</code>은 거짓이라 새로 그리지 않는다. 확대·축소·기본크기는 <code>zoom</code>을 바꾸고, 팬은 영상을 끌어 옮기고, 밝기는 <code>brightness</code>와 <code>contrast</code>를 바꾼다. 리셋은 배율 1, 위치 원점, 밝기 기본으로 되돌린다. 사용자 ROI와 정답 표시는 같은 <code>stage</code> 안에 있어 확대·이동과 함께 움직인다.</li>
           <li>슬라이스 값이 있으면 결과 배지와 요약에 "슬라이스 N / M"을 보여 준다.</li>
@@ -692,7 +690,7 @@ POST /qa/{idx}/messages  { user_idx, body }</code></pre>
         <pre><code>gradeResult.classification.findings  → 출혈 (ICH) 막대
 gradeResult.germinoma.findings       → Germinoma · 생식세포종양 막대</code></pre>
         <h3>확인하는 법</h3>
-        <p>로그인한 뒤 제출 없이 <code>/medical/review</code>를 열면 목업에 출혈·생식세포종양 예시가 보여야 한다. 넓은 화면에서 오른쪽 요약은 300px에서 360px이고 영상은 남은 가로다. 영상 왼쪽에 확대, 축소, 기본크기, 팬, 밝기, 리셋이 있고, 확대를 누르면 Zoom 숫자가 커져야 한다. 사용자 영역과 정답 표시는 확대·이동 뒤에도 영상과 함께 움직여야 한다. 위 정보 줄의 버튼 배치는 풀이 화면과 같아야 한다. 좁은 화면에서는 영상 아래에 요약이 이어진다. 요약에 "ROI 정확도"는 없고 추정 병명과 포함률만 있어야 한다. <code>review</code>를 붙이면 그 제출의 채점 이미지가 목업 대신 보여야 한다. 그때 "다시 제출"은 같은 <code>idx</code>의 풀이 화면으로 가고, 영역을 그려 제출하면 그 이미지가 <code>/learning/roi-grade</code>로 다시 가야 한다. 세션이 없으면 로그인 화면으로 간다. 풀이에서 제출한 직후라면 방금 그린 영역과 서버 판정이 보여야 하고, Network/<code>medlens.review</code>의 <code>germinoma</code>가 있으면 요약에 Germinoma 줄이 나와야 한다. "학습 종료"를 누르면 메인 홈(<code>/main</code>)으로 가야 한다.</p>
+        <p>로그인한 뒤 제출 없이 <code>/medical/review</code>를 열면 목업에 출혈·생식세포종양 예시가 보여야 한다. 넓은 화면에서 오른쪽 요약은 300px에서 360px이고 영상은 남은 가로다. 영상 왼쪽에 확대, 축소, 기본크기, 팬, 밝기, 리셋이 있고, 확대를 누르면 Zoom 숫자가 커져야 한다. 사용자 영역과 정답 표시는 확대·이동 뒤에도 영상과 함께 움직여야 한다. 위 정보 줄의 버튼 배치는 풀이 화면과 같아야 한다. 좁은 화면에서는 영상 아래에 요약이 이어진다. 요약에 "ROI 정확도"는 없고 추정 병명과 포함률만 있어야 한다. <code>review</code>를 붙이면 그 제출의 채점 이미지가 목업 대신 보여야 한다. 그때 "다시 제출"은 같은 <code>idx</code>의 풀이 화면으로 가고, 영역을 그려 제출하면 그 이미지가 <code>/learning/roi-grade</code>로 다시 가야 한다. 무릎 MRI를 제출한 직후 Network에서 리뷰 영상이 <code>/learning/problem/132/image?slice_index=</code>처럼 문제 API여야 하고, "이미지를 불러오지 못했습니다."가 나오면 안 된다. 세션이 없으면 로그인 화면으로 간다. 풀이에서 제출한 직후라면 방금 그린 영역과 서버 판정이 보여야 하고, Network/<code>medlens.review</code>의 <code>germinoma</code>가 있으면 요약에 Germinoma 줄이 나와야 한다. "학습 종료"를 누르면 메인 홈(<code>/main</code>)으로 가야 한다.</p>
       </section>
 
       <section id="todo">

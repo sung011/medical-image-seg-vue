@@ -1,29 +1,16 @@
-import { API_BASE } from '../../apiBase'
-import { getUserSession } from '../login/authSession'
-import { isAccountSession } from '../login/accountSession'
+import { API_BASE, apiCredentials } from '../../apiBase'
+import { normalizeResult } from './review/reviewModel'
 
 const BRAIN_MRI_API = `${API_BASE}/api/v1/analyze/brain-mri`
-// 무릎 채점은 로그인 쿠키(learner 세션)가 있어야 하므로 같은 출처 계정 프록시로 보낸다(devserver/accountProxy.js).
-const KNEE_GRADE_API = '/account-api/learning/roi-grade/knee'
-const KNEE_TIMEOUT_MS = 20000
-// 무릎 채점 실패 안내(고정 문구). 프록시가 서버 원문 대신 상태·코드만 돌려준다.
-const KNEE_ERROR = {
-  400: '박스 영역이나 장 번호를 확인한 뒤 다시 제출해 주세요.',
-  401: '로그인이 필요합니다. 다시 로그인해 주세요.',
-  403: '관리자 승인 후 사용할 수 있어요. 승인 여부는 관리자에게 문의해 주세요.',
-  404: '채점할 수 있는 문제가 아닙니다.',
-  408: '제출 내용을 다 보내지 못했어요. 다시 제출해 주세요.',
-  409: '문제 내용이 바뀌었어요. 문제를 다시 열어 주세요.',
-  412: '이 브라우저에 다른 계정이 로그인되어 있어 제출하지 않았어요. 다시 로그인해 주세요.',
-  413: '제출 내용이 너무 커요.',
-  429: '시도가 너무 많아요. 잠시 후 다시 해 주세요.',
-  503: '지금은 무릎 채점을 사용할 수 없어요.'
-}
-const KNEE_UNKNOWN = '채점 결과를 확인하지 못했어요. 학습 기록에서 저장됐는지 확인한 뒤 필요하면 다시 제출해 주세요.'
+const KNEE_GRADE_API = `${API_BASE}/learning/roi-grade/knee`
+const KNEE_TASK_API = `${API_BASE}/learning/knee/task`
 
 function errorDetail(payload, fallback) {
   const detail = payload && payload.detail
   if (typeof detail === 'string' && detail) return detail
+  if (detail && typeof detail === 'object' && typeof detail.message === 'string' && detail.message) {
+    return detail.message
+  }
   if (payload && typeof payload.message === 'string' && payload.message) return payload.message
   if (Array.isArray(detail) && detail.length) {
     return detail.map((item) => item.msg || JSON.stringify(item)).join('\n')
@@ -63,10 +50,11 @@ export function brainMriAsGrade(data) {
   const predictions = Array.isArray(data.predictions) ? data.predictions.slice() : []
   predictions.sort((left, right) => Number(right.confidence) - Number(left.confidence))
   const top = predictions[0] || {}
-  const labels = ['정답', '부분정답', '오답']
+  const normalized = normalizeResult(data.result)
+  const graded = normalized === '일치' || normalized === '부분일치' || normalized === '불일치'
   return {
     ok: true,
-    result: labels.includes(data.result) ? data.result : '판독',
+    result: graded ? normalized : '판독',
     recall: data.recall == null ? null : data.recall,
     iou: data.iou == null ? null : data.iou,
     review_idx: data.review_idx,
@@ -89,11 +77,45 @@ export function brainMriAsGrade(data) {
   }
 }
 
-/**
- * 무릎 ROI 채점. 같은 출처 /account-api 로 로그인 쿠키와 함께 보낸다. 회원은 서버가 쿠키로 정하고,
- * 화면 계정 번호(X-Medlens-Account)는 프록시가 쿠키 계정과 같은지 확인하는 데만 쓴다(인증 수단 아님, 폼에 회원 번호를 싣지 않는다).
- * 자동으로 다시 보내지 않는다. 채점하지 않는 문제(승인 기준 없음 등)는 200 + graded=false 로 온다.
- */
+/** 무릎 슬라이드 채점에 필요한 problem_token·대표 장 번호를 받는다. */
+export async function fetchKneeTask(studyIdx) {
+  const params = new URLSearchParams({study_idx: String(studyIdx)})
+  let response
+  try {
+    response = await fetch(`${KNEE_TASK_API}?${params}`, {
+      credentials: apiCredentials()
+    })
+  } catch (err) {
+    throw new Error('서버에 연결하지 못했습니다. 개발 서버를 재시작한 뒤 다시 로그인해 주세요.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (response.status === 401) {
+    throw new Error('로그인이 필요합니다. 로그아웃 후 다시 로그인해 주세요.')
+  }
+  if (!response.ok) {
+    throw new Error(errorDetail(data, `무릎 문제 정보를 불러오지 못했습니다. (${response.status})`))
+  }
+  const task = data && data.knee_task && typeof data.knee_task === 'object' ? data.knee_task : null
+  if (!task) {
+    throw new Error('무릎 문제 정보가 비어 있습니다.')
+  }
+  return {
+    studyIdx: data.study_idx != null ? data.study_idx : studyIdx,
+    gradingAvailable: task.grading_available === true,
+    unavailableReason: task.unavailable_reason || '',
+    problemToken: typeof task.problem_token === 'string' ? task.problem_token : '',
+    representativeSliceIndex:
+      task.representative_slice_index != null && Number.isFinite(Number(task.representative_slice_index))
+        ? Number(task.representative_slice_index)
+        : null,
+    sliceCount:
+      task.slice_count != null && Number.isFinite(Number(task.slice_count))
+        ? Number(task.slice_count)
+        : null,
+    taskLabel: task.task_label || ''
+  }
+}
+
 export async function gradeKneeRoi(fields) {
   const owner = getUserSession()
   if (!isAccountSession(owner)) {
@@ -104,33 +126,38 @@ export async function gradeKneeRoi(fields) {
     if (key === 'user_idx') return
     if (fields[key] != null && fields[key] !== '') body.set(key, String(fields[key]))
   })
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), KNEE_TIMEOUT_MS)
   let response
-  let data = null
   try {
     response = await fetch(KNEE_GRADE_API, {
       method: 'POST',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      redirect: 'manual',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Medlens-Account': String(owner.idx) },
-      body,
-      signal: controller.signal
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      credentials: apiCredentials(),
+      body
     })
-    data = await response.json().catch(() => null)
-  } catch (e) {
-    throw new Error(KNEE_UNKNOWN)
-  } finally {
-    clearTimeout(timer)
+  } catch (err) {
+    throw new Error('서버에 연결하지 못했습니다. 개발 서버를 재시작한 뒤 다시 로그인해 주세요.')
   }
-  if (response.type === 'opaqueredirect') throw new Error(KNEE_UNKNOWN)
-  if (!response.ok) throw new Error(KNEE_ERROR[response.status] || KNEE_UNKNOWN)
-  if (!data || data.ok !== true || typeof data.graded !== 'boolean') throw new Error(KNEE_UNKNOWN)
+  const data = await response.json().catch(() => ({}))
+  if (response.status === 401) {
+    throw new Error('로그인이 필요합니다. 로그아웃 후 다시 로그인해 주세요.')
+  }
+  if (response.status === 403) {
+    throw new Error(errorDetail(data, '이메일 인증을 마친 뒤 사용할 수 있습니다.'))
+  }
+  if (!response.ok && !(data && data.reading)) {
+    throw new Error(errorDetail(data, `무릎 채점 오류 (${response.status})`))
+  }
+  if (data && data.ok && data.graded === false) {
+    throw new Error(
+      data.not_graded_message || '이 문제는 지금 채점할 수 없습니다. 서버 기준 영상이 준비되지 않았습니다.'
+    )
+  }
   return data
 }
 
 export function kneeAsGrade(data) {
+  const disease =
+    (data && (data.expected_disease || data.disease || data.rn_disease)) || ''
   const reading = data && data.reading
   if (reading && Array.isArray(reading.findings)) {
     const scored = reading.findings.filter((item) => item.status === 'evaluated' && item.prob != null)
@@ -138,8 +165,9 @@ export function kneeAsGrade(data) {
     const top = scored[0] || {}
     return {
       ok: true,
-      result: data.result,
-      disease: top.label_ko || '',
+      result: normalizeResult(data.result),
+      disease: disease || top.label_ko || '',
+      expected_disease: disease || null,
       recall: data.recall,
       iou: data.iou,
       review_idx: data.review_idx || null,
@@ -148,7 +176,7 @@ export function kneeAsGrade(data) {
       classification: {
         task: 'knee-mri',
         top_label: top.key || '',
-        top_label_ko: top.label_ko || '',
+        top_label_ko: disease || top.label_ko || '',
         confidence: top.prob,
         findings: reading.findings.map((item) => ({
           label: item.key,
@@ -165,7 +193,9 @@ export function kneeAsGrade(data) {
   }
   return {
     ok: true,
-    result: data.result || '미채점',
+    result: normalizeResult(data.result) || '미채점',
+    disease: disease || '',
+    expected_disease: disease || null,
     recall: data.iou,
     iou: data.iou,
     review_idx: data.review_idx || null,
@@ -174,7 +204,7 @@ export function kneeAsGrade(data) {
     classification: {
       task: 'knee',
       top_label: 'acl',
-      top_label_ko: 'ACL',
+      top_label_ko: disease || 'ACL',
       confidence: data.iou,
       findings: []
     },

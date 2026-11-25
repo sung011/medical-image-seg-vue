@@ -21,8 +21,8 @@
           <p class="nav-card__desc">새로운 문제를 시작하거나 이어갈 수 있어요.</p>
         </router-link>
         <router-link class="nav-card" to="/note">
-          <h2 class="nav-card__title">오답노트</h2>
-          <p class="nav-card__desc">틀린 문제를 확인하고 실력을 향상시켜요.</p>
+          <h2 class="nav-card__title">리뷰노트</h2>
+          <p class="nav-card__desc">불일치·부분일치를 확인하고 실력을 향상시켜요.</p>
         </router-link>
         <router-link class="nav-card" to="/history">
           <h2 class="nav-card__title">학습 기록</h2>
@@ -52,7 +52,7 @@
                 <p class="status__value">{{ item.solvedCount }}문제</p>
               </div>
               <div class="status__item">
-                <p class="status__label">정답률</p>
+                <p class="status__label">일치률</p>
                 <p class="status__value">{{ item.accuracy }}%</p>
               </div>
             </div>

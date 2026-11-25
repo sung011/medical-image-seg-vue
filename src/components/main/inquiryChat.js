@@ -29,7 +29,10 @@ async function readJson(response) {
   const data = await response.json().catch(() => ({}))
   if (!response.ok || data.ok === false) {
     const detail = data && data.detail
-    const message = typeof detail === 'string' ? detail : '문의를 처리하지 못했습니다.'
+    const message =
+      (typeof detail === 'string' && detail) ||
+      (detail && typeof detail === 'object' && typeof detail.message === 'string' && detail.message) ||
+      '문의를 처리하지 못했습니다.'
     throw new Error(message)
   }
   return data

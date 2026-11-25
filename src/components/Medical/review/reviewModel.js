@@ -1,10 +1,17 @@
 import {API_BASE} from '../../../apiBase'
-import {buildImageUrl} from '../../../imageBase'
+import {buildImageUrl, sliceIndexFromImagePath} from '../../../imageBase'
 
 export const STORAGE_KEY = 'medlens.review'
 
+export function normalizeResult(result) {
+  if (result === '정답') return '일치'
+  if (result === '부분정답' || result === '부분 정답') return '부분일치'
+  if (result === '오답') return '불일치'
+  return result
+}
+
 export const MOCK_GRADE = {
-  result: '부분정답',
+  result: '부분일치',
   has_abnormality: true,
   recall: 0.68,
   iou: 0.42,
@@ -40,8 +47,8 @@ export const MOCK_USER_ROI = {
   height: 0.3
 }
 
-export function publicAssetUrl(path) {
-  return buildImageUrl(path)
+export function publicAssetUrl(path, options = {}) {
+  return buildImageUrl(path, options)
 }
 
 export function overlaySrcFromBase64(b64) {
@@ -63,15 +70,20 @@ export function containLayout(naturalW, naturalH, frameW, frameH) {
 }
 
 export function formatResult(result) {
-  if (result === '부분정답') return '부분 정답'
-  return result || '채점 대기'
+  return normalizeResult(result) || '채점 대기'
 }
 
 export function resultClass(result) {
-  if (result === '정답') return 'ok'
-  if (result === '부분정답') return 'partial'
-  if (result === '판독') return 'read'
+  const normalized = normalizeResult(result)
+  if (normalized === '일치') return 'ok'
+  if (normalized === '부분일치') return 'partial'
+  if (normalized === '판독') return 'read'
   return 'wrong'
+}
+
+export function isGradedResult(result) {
+  const normalized = normalizeResult(result)
+  return normalized === '일치' || normalized === '부분일치' || normalized === '불일치'
 }
 
 export function createDefaultReview() {
@@ -116,22 +128,33 @@ export async function fetchSavedReview(reviewIdx, userIdx) {
   }
   const recall = ratioOrNull(data.recall)
   const iou = ratioOrNull(data.iou)
-  const sliceIndex = ratioOrNull(data.slice_index)
+  let sliceIndex = ratioOrNull(data.slice_index)
+  if (sliceIndex == null || sliceIndex < 0) {
+    const fromPath = sliceIndexFromImagePath(data.image)
+    sliceIndex = fromPath != null ? fromPath : null
+  }
+  const studyIdx = data.study_idx
+  const userRois = normalizeUserRois({
+    userRois: Array.isArray(data.user_rois) ? data.user_rois : null,
+    userRoi: data.user_roi || null
+  })
+  const answerBox = data.abnormality_bbox || findings.abnormality_bbox || null
   return {
     usingMock: false,
     grade: {
-      result: data.solution_label || '오답',
+      result: normalizeResult(data.solution_label) || '불일치',
       disease: data.disease || '',
       recall,
       iou,
       overlay_summary: data.overlay_summary || '',
       classification: findings.classification || null,
-      germinoma: findings.germinoma || null
+      germinoma: findings.germinoma || null,
+      abnormality_bbox: answerBox
     },
-    studyIdx: data.study_idx,
-    imageSrc: publicAssetUrl(data.image),
-    userRoi: null,
-    userRois: [],
+    studyIdx,
+    imageSrc: publicAssetUrl(data.image, {studyIdx, sliceIndex}),
+    userRoi: userRois[0] || null,
+    userRois,
     overlaySrc: '',
     type: data.type || '',
     sliceIndex: sliceIndex != null && sliceIndex >= 0 ? sliceIndex : null,
@@ -190,23 +213,33 @@ export function loadReviewFromStorage() {
     const sliceIndex =
       saved.sliceIndex != null && Number.isFinite(Number(saved.sliceIndex))
         ? Number(saved.sliceIndex)
-        : null
+        : sliceIndexFromImagePath(saved.imagePath)
     const sliceTotal =
       saved.sliceTotal != null && Number.isFinite(Number(saved.sliceTotal))
         ? Number(saved.sliceTotal)
         : null
+    const studyIdx =
+      saved.studyIdx != null && Number.isFinite(Number(saved.studyIdx))
+        ? Number(saved.studyIdx)
+        : null
     const userRois = normalizeUserRois(saved)
+    const grade = {...saved.gradeResult}
+    if (grade.result != null) grade.result = normalizeResult(grade.result)
     return {
       usingMock: false,
-      grade: saved.gradeResult,
-      imageSrc: publicAssetUrl(saved.imagePath) || saved.imageDataUrl || '',
+      grade,
+      studyIdx,
+      imageSrc:
+        publicAssetUrl(saved.imagePath, {studyIdx, sliceIndex}) ||
+        saved.imageDataUrl ||
+        '',
       userRoi: userRois[0] || null,
       userRois,
       overlaySrc:
         publicAssetUrl(saved.overlayPath) ||
         overlaySrcFromBase64(saved.gradeResult.overlay_png_base64),
       type: saved.type || '',
-      sliceIndex,
+      sliceIndex: sliceIndex != null && sliceIndex >= 0 ? sliceIndex : null,
       sliceTotal
     }
   } catch (e) {

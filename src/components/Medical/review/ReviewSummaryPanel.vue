@@ -176,14 +176,22 @@ export default {
       return hasBatchim ? '으로' : '로'
     },
     diseaseName() {
-      if (this.readingTask === 'thorax' || this.readingTask === 'abdomen' || this.readingTask === 'brain-mri' || this.readingTask === 'knee' || this.readingTask === 'knee-mri') {
+      if (this.readingTask === 'knee' || this.readingTask === 'knee-mri') {
+        // 무릎은 채점 후 study 병명(expected_disease)을 우선한다. 고정 'ACL' 로 덮지 않는다.
+        return (
+          this.grade.disease ||
+          this.grade.expected_disease ||
+          (this.grade.classification && this.grade.classification.top_label_ko) ||
+          '병명 없음'
+        )
+      }
+      if (this.readingTask === 'thorax' || this.readingTask === 'abdomen' || this.readingTask === 'brain-mri') {
         const top =
           (this.grade.classification && this.grade.classification.top_label_ko) ||
           this.grade.disease ||
           ''
         if (top) return top
         if (this.readingTask === 'abdomen') return '장기 없음'
-        if (this.readingTask === 'knee' || this.readingTask === 'knee-mri') return 'ACL'
       }
       const ich =
         (this.grade.classification && this.grade.classification.top_label_ko) ||

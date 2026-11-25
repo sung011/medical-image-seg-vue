@@ -46,10 +46,10 @@
                     <circle cx="12" cy="12" r="1.2" fill="currentColor"/>
                   </svg>
                 </div>
-                <p class="stat-card__label">정답률</p>
+                <p class="stat-card__label">일치률</p>
                 <p class="stat-card__value">{{ summary.accuracy }}<span>%</span></p>
                 <div class="stat-card__bar"><span :style="{ width: summary.accuracy + '%' }"></span></div>
-                <p class="stat-card__caption">총 {{ summary.correctStudies }} / {{ summary.solved }} 케이스 정답</p>
+                <p class="stat-card__caption">총 {{ summary.correctStudies }} / {{ summary.solved }} 케이스 일치</p>
               </article>
               <article class="stat-card">
                 <div class="stat-card__icon" aria-hidden="true">
@@ -60,7 +60,7 @@
                 <p class="stat-card__label">ROI 정확도</p>
                 <p class="stat-card__value">{{ summary.roiAccuracy }}<span>%</span></p>
                 <div class="stat-card__bar"><span :style="{ width: summary.roiAccuracy + '%' }"></span></div>
-                <p class="stat-card__caption">정답 {{ summary.correctSubmissions }} / 제출 {{ summary.submissions }}</p>
+                <p class="stat-card__caption">일치 {{ summary.correctSubmissions }} / 제출 {{ summary.submissions }}</p>
               </article>
             </section>
 
@@ -97,6 +97,12 @@
                       <button type="button" class="case-cell" @click="openCase(item)">
                         <span class="case-cell__thumb">
                           <img v-if="item.image" :src="item.image" alt=""/>
+                          <span
+                              v-if="item.userRoi"
+                              class="case-cell__roi"
+                              :class="item.userRoi.type"
+                              :style="roiStyle(item.userRoi)"
+                          />
                         </span>
                         <span class="case-cell__text">
                           <strong>{{ item.caseLabel }}</strong>
@@ -135,6 +141,7 @@ import {
     PREVIEW_SIZE,
     fetchLearningHistory,
     filterByRange,
+    roiThumbStyle,
     summarizeHistory
 } from './history'
 
@@ -201,6 +208,9 @@ export default {
     },
     showAll() {
       this.shown = this.filteredItems.length
+    },
+    roiStyle(roi) {
+      return roiThumbStyle(roi)
     },
     openCase(item) {
       const region = item.region || 'brain'
@@ -423,7 +433,8 @@ export default {
 }
 
 .case-cell__thumb {
-  display: flex;
+  position: relative;
+  display: block;
   width: 52px;
   height: 40px;
   overflow: hidden;
@@ -436,6 +447,14 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.case-cell__roi {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid #00e6ff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
 }
 
 .case-cell__text {
