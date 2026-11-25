@@ -1,9 +1,13 @@
-import { API_BASE, apiCredentials } from '../../apiBase'
+import { API_BASE } from '../../apiBase'
+import { ACCOUNT_API_BASE } from '../account/accountApi'
+import { getUserSession } from '../login/authSession'
+import { isAccountSession } from '../login/accountSession'
 import { normalizeResult } from './review/reviewModel'
 
 const BRAIN_MRI_API = `${API_BASE}/api/v1/analyze/brain-mri`
-const KNEE_GRADE_API = `${API_BASE}/learning/roi-grade/knee`
-const KNEE_TASK_API = `${API_BASE}/learning/knee/task`
+/** 계정 쿠키(Path=/account-api)가 있어야 하므로 같은 출처 프록시로 보낸다. */
+const KNEE_GRADE_API = `${ACCOUNT_API_BASE}/learning/roi-grade/knee`
+const KNEE_TASK_API = `${ACCOUNT_API_BASE}/learning/knee/task`
 
 function errorDetail(payload, fallback) {
   const detail = payload && payload.detail
@@ -79,11 +83,18 @@ export function brainMriAsGrade(data) {
 
 /** 무릎 슬라이드 채점에 필요한 problem_token·대표 장 번호를 받는다. */
 export async function fetchKneeTask(studyIdx) {
+  // 화면 세션만 있으면 일단 요청한다. 계정 쿠키(Path=/account-api)가 없으면 서버·프록시가 401을 준다.
+  // (account_verified 검사로 먼저 막으면, 헤더에 이름이 보여도 “로그인이 필요합니다”만 나와 헷갈린다.)
+  const owner = getUserSession()
+  if (!owner || !Number.isInteger(owner.idx) || owner.idx < 1) {
+    throw new Error('로그인이 필요합니다. 로그아웃 후 다시 로그인해 주세요.')
+  }
   const params = new URLSearchParams({study_idx: String(studyIdx)})
   let response
   try {
     response = await fetch(`${KNEE_TASK_API}?${params}`, {
-      credentials: apiCredentials()
+      credentials: 'same-origin',
+      cache: 'no-store'
     })
   } catch (err) {
     throw new Error('서버에 연결하지 못했습니다. 개발 서버를 재시작한 뒤 다시 로그인해 주세요.')
@@ -91,6 +102,9 @@ export async function fetchKneeTask(studyIdx) {
   const data = await response.json().catch(() => ({}))
   if (response.status === 401) {
     throw new Error('로그인이 필요합니다. 로그아웃 후 다시 로그인해 주세요.')
+  }
+  if (response.status === 403) {
+    throw new Error(errorDetail(data, '이메일 인증을 마친 뒤 사용할 수 있습니다.'))
   }
   if (!response.ok) {
     throw new Error(errorDetail(data, `무릎 문제 정보를 불러오지 못했습니다. (${response.status})`))
@@ -130,8 +144,12 @@ export async function gradeKneeRoi(fields) {
   try {
     response = await fetch(KNEE_GRADE_API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      credentials: apiCredentials(),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Medlens-Account': String(owner.idx)
+      },
+      credentials: 'same-origin',
+      cache: 'no-store',
       body
     })
   } catch (err) {
