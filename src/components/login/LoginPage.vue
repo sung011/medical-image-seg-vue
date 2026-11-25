@@ -17,7 +17,7 @@
 import LoginBrandPanel from './LoginBrandPanel.vue'
 import LoginForm from './LoginForm.vue'
 import { saveUserSession } from './authSession'
-import { API_BASE } from '../../apiBase'
+import { API_BASE, apiCredentials } from '../../apiBase'
 
 const LOGIN_API = `${API_BASE}/login`
 
@@ -45,6 +45,7 @@ export default {
         const res = await fetch(LOGIN_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: apiCredentials(),
           body: JSON.stringify({ userId, userPw })
         })
         const data = await res.json().catch(() => ({}))
@@ -53,6 +54,7 @@ export default {
           const detail = data.detail
           const message =
             (typeof detail === 'string' && detail) ||
+            (detail && typeof detail === 'object' && typeof detail.message === 'string' && detail.message) ||
             data.message ||
             '아이디 또는 비밀번호가 올바르지 않습니다.'
           throw new Error(message)
@@ -61,7 +63,13 @@ export default {
         saveUserSession(data)
         await this.$router.push('/main')
       } catch (e) {
-        this.errorMessage = e.message || '로그인에 실패했습니다.'
+        const msg = e && e.message ? String(e.message) : ''
+        if (/failed to fetch|networkerror|network|load failed|unavailable/i.test(msg)) {
+          this.errorMessage =
+            '서버에 연결하지 못했습니다. npm run serve 를 재시작한 뒤 다시 시도해 주세요.'
+        } else {
+          this.errorMessage = msg || '로그인에 실패했습니다.'
+        }
       } finally {
         this.loading = false
       }

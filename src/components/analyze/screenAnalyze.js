@@ -6,6 +6,9 @@ const HEAD_RE = /^(?:【(.+?)】|\[(.+?)\])\s*(.*)$/
 
 function errorMessage(data, fallback) {
   if (data && typeof data.detail === 'string') return data.detail
+  if (data && data.detail && typeof data.detail === 'object' && typeof data.detail.message === 'string') {
+    return data.detail.message
+  }
   if (data && typeof data.message === 'string') return data.message
   return fallback
 }
@@ -71,6 +74,7 @@ const THORAX_SCREEN_API = `${API_BASE}/api/v1/thorax/analyze/screen-roi`
 const ABDOMEN_HEALTH_API = `${API_BASE}/api/v1/abdomen/health`
 const ABDOMEN_SCREEN_API = `${API_BASE}/api/v1/abdomen/analyze/screen-roi`
 const ABDOMEN_EXPLAIN_API = `${API_BASE}/api/v1/abdomen/analyze/screen-roi/explain`
+const BRAIN_MRI_HEALTH_API = `${API_BASE}/api/v1/brain-mri/health`
 const BRAIN_MRI_API = `${API_BASE}/api/v1/analyze/brain-mri`
 const KNEE_SCREEN_API = `${API_BASE}/api/v1/knee/screen-roi`
 
@@ -160,6 +164,7 @@ export async function explainAbdomenScreenRoi(blob, analysis) {
 }
 
 export async function analyzeBrainMri(blob, sequence) {
+  await assertReady(BRAIN_MRI_HEALTH_API, 'model_loaded', '뇌 MRI 모델이 준비되지 않았습니다.')
   const form = new FormData()
   form.append('image', blob, 'mri.png')
   form.append('include_overlay', 'true')

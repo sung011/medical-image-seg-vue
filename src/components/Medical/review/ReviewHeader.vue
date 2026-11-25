@@ -21,7 +21,7 @@
 </template>
 
 <script>
-import { clearUserSession } from '../../login/authSession'
+import { logoutUserSession } from '../../login/authSession'
 import BrandMark from '../../main/BrandMark.vue'
 
 const REVIEW_STORAGE_KEY = 'medlens.review'
@@ -33,8 +33,8 @@ export default {
   },
   emits: ['next', 'done'],
   methods: {
-    onLogout() {
-      clearUserSession()
+    async onLogout() {
+      await logoutUserSession()
       sessionStorage.removeItem(REVIEW_STORAGE_KEY)
       this.$router.push('/login')
     }

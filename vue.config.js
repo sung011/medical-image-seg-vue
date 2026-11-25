@@ -9,6 +9,14 @@ module.exports = defineConfig({
             ]
         },
         proxy: {
+            '/__api': {
+                target: 'http://127.0.0.1:8000',
+                changeOrigin: true,
+                pathRewrite: {
+                    '^/__api': ''
+                },
+                cookieDomainRewrite: ''
+            },
             '/stylesheets': {
                 target: 'https://kr.object.ncloudstorage.com',
                 changeOrigin: true,

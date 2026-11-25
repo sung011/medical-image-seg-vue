@@ -5,8 +5,8 @@
       <div class="note-page__main">
         <div class="note-page__panel">
           <header class="note-head">
-            <h1>오답노트</h1>
-            <p>틀린 문제와 부분 정답 문제를 다시 확인하고 복습해보세요.</p>
+            <h1>리뷰노트</h1>
+            <p>불일치·부분일치 문제를 다시 확인하고 복습해보세요.</p>
           </header>
 
           <div class="note-toolbar">
@@ -32,11 +32,17 @@
 
           <p v-if="loading" class="note-empty">불러오는 중</p>
           <p v-else-if="error" class="note-empty note-empty--error">{{ error }}</p>
-          <p v-else-if="!visibleNotes.length" class="note-empty">틀린 문제가 아직 없어요.</p>
+          <p v-else-if="!visibleNotes.length" class="note-empty">복습할 문제가 아직 없어요.</p>
           <ul v-else class="note-grid">
             <li v-for="item in pagedNotes" :key="item.idx" class="note-card">
               <div class="note-card__image">
                 <img v-if="item.image" :src="item.image" alt=""/>
+                <span
+                    v-if="item.userRoi"
+                    class="note-card__roi"
+                    :class="item.userRoi.type"
+                    :style="roiStyle(item.userRoi)"
+                />
                 <span class="note-card__orient">R</span>
               </div>
               <div class="note-card__body">
@@ -85,6 +91,7 @@ import {
   filterNotes,
   pageCount,
   pageItems,
+  roiThumbStyle,
   sortNotes
 } from './wrongNote'
 
@@ -134,6 +141,9 @@ export default {
       this.filter = id
       this.page = 1
     },
+    roiStyle(roi) {
+      return roiThumbStyle(roi)
+    },
     async loadNotes() {
       const user = getUserSession()
       const userIdx = user && Number(user.idx)
@@ -144,7 +154,7 @@ export default {
         this.notes = await fetchWrongNotes(userIdx)
       } catch (e) {
         this.notes = []
-        this.error = e.message || '오답노트를 불러오지 못했습니다.'
+        this.error = e.message || '리뷰노트를 불러오지 못했습니다.'
       } finally {
         this.loading = false
       }
@@ -297,6 +307,14 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.note-card__roi {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #00e6ff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
 }
 
 .note-card__orient {

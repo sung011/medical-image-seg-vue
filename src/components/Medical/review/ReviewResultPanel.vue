@@ -65,7 +65,12 @@
 
 <script>
 import XrayViewer from '../XrayViewer.vue'
-import { containLayout, formatResult, resultClass as gradeResultClass } from './reviewModel'
+import {
+  containLayout,
+  formatResult,
+  isGradedResult,
+  resultClass as gradeResultClass
+} from './reviewModel'
 
 export default {
   name: 'ReviewResultPanel',
@@ -139,7 +144,7 @@ export default {
         return '정답 병변을 부분적으로 포함했으나 범위가 정답보다 넓습니다. 정상 폐실질 및 심 음영을 확인해주세요.'
       }
       const task = this.grade.classification && this.grade.classification.task
-      const graded = this.grade.result === '정답' || this.grade.result === '부분정답' || this.grade.result === '오답'
+      const graded = isGradedResult(this.grade.result)
       if ((task === 'knee-mri' || task === 'knee') && !graded) {
         return this.grade.overlay_summary || '무릎 MRI를 채점하지 못했습니다.'
       }
@@ -151,10 +156,10 @@ export default {
         return `뇌 MRI로 판독했습니다. 가장 높은 소견은 ${name}입니다. 뇌 CT 출혈 모델은 사용하지 않습니다.`
       }
       const sliceHint = this.sliceLabel ? ` (${this.sliceLabel})` : ''
-      if (this.grade.result === '정답') {
+      if (formatResult(this.grade.result) === '일치') {
         return `정답 병변을 잘 포함했습니다. 선택한 범위가 실제 이상 부위와 대체로 일치합니다.${sliceHint}`
       }
-      if (this.grade.result === '부분정답') {
+      if (formatResult(this.grade.result) === '부분일치') {
         return `정답 병변을 부분적으로 포함했으나 범위가 정답과 완전히 같지는 않습니다. 색칠된 위치와 비교해 보세요.${sliceHint}`
       }
       return `선택한 영역이 정답 병변과 거의 겹치지 않습니다. 색칠된 정답 위치를 다시 확인해 주세요.${sliceHint}`

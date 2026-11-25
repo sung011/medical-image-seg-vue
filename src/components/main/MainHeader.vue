@@ -7,7 +7,7 @@
       <nav class="main-header__nav" aria-label="메인 메뉴">
         <router-link class="main-header__link" to="/learning">학습</router-link>
         <!--        <router-link class="main-header__link" to="/glossary">용어 사전</router-link>-->
-        <router-link class="main-header__link" to="/note">오답노트</router-link>
+        <router-link class="main-header__link" to="/note">리뷰노트</router-link>
         <router-link class="main-header__link" to="/analyze">화면 분석</router-link>
         <a class="main-header__link" href="#" @click.prevent>마이페이지</a>
         <button type="button" class="main-header__link main-header__inquiry" @click="onInquiry">
@@ -38,7 +38,7 @@
 </template>
 
 <script>
-import {clearUserSession, getUserSession} from '../login/authSession'
+import {getUserSession, logoutUserSession} from '../login/authSession'
 import BrandMark from './BrandMark.vue'
 
 const REVIEW_STORAGE_KEY = 'medlens.review'
@@ -76,9 +76,9 @@ export default {
     onUserMenu() {
       this.menuOpen = !this.menuOpen
     },
-    onLogout() {
+    async onLogout() {
       this.menuOpen = false
-      clearUserSession()
+      await logoutUserSession()
       sessionStorage.removeItem(REVIEW_STORAGE_KEY)
       this.user = null
       this.$router.push('/login')

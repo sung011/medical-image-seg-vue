@@ -64,11 +64,13 @@ import { API_BASE } from '../../apiBase'
 import { showMessage } from '../../notify'
 import {
   brainMriAsGrade,
+  fetchKneeTask,
   gradeKneeRoi,
   kneeAsGrade,
   readBrainMri,
   readingKind
 } from './readingGrade'
+import {normalizeResult} from './review/reviewModel'
 
 const PROBLEM_API = `${API_BASE}/learning/problem`
 const ROI_GRADE_API = `${API_BASE}/learning/roi-grade`
@@ -174,6 +176,9 @@ function unionImageBoxes(boxes) {
 function errorDetail(payload, fallback) {
   const detail = payload && payload.detail
   if (typeof detail === 'string' && detail) return detail
+  if (detail && typeof detail === 'object' && typeof detail.message === 'string' && detail.message) {
+    return detail.message
+  }
   if (Array.isArray(detail) && detail.length) {
     return detail.map((item) => item.msg || JSON.stringify(item)).join('\n')
   }
@@ -205,6 +210,8 @@ export default {
       fetchToken: 0,
       sliceLoaded: 0,
       studyIdx: null,
+      kneeProblemToken: '',
+      kneeRepSliceIndex: null,
       caseId: '-',
       caseSummary: '',
       problemLoading: false,
@@ -501,6 +508,8 @@ export default {
       this.sliceIndex = 0
       this.shownSliceIndex = 0
       this.studyIdx = null
+      this.kneeProblemToken = ''
+      this.kneeRepSliceIndex = null
       this.sliceLoadToken += 1
       this.fetchToken += 1
       const token = this.fetchToken
@@ -516,6 +525,20 @@ export default {
         this.studyIdx = problem.idx ?? null
         if (this.studyIdx == null) {
           throw new Error('문제 번호가 없습니다.')
+        }
+        const kind = readingKind(stPart, stModal)
+        if (kind === 'knee-mri') {
+          const kneeTask = await fetchKneeTask(this.studyIdx)
+          if (token !== this.fetchToken) return
+          if (!kneeTask.gradingAvailable || !kneeTask.problemToken) {
+            throw new Error(
+              kneeTask.unavailableReason
+                ? '이 무릎 문제는 지금 채점할 수 없습니다. 문제를 다시 열어 주세요.'
+                : '무릎 채점 정보를 받지 못했습니다. 다시 로그인한 뒤 문제를 열어 주세요.'
+            )
+          }
+          this.kneeProblemToken = kneeTask.problemToken
+          this.kneeRepSliceIndex = kneeTask.representativeSliceIndex
         }
         this.slicePaths = paths
         await this.preloadAllSlices(token)
@@ -534,6 +557,8 @@ export default {
         this.sliceIndex = 0
         this.shownSliceIndex = 0
         this.studyIdx = null
+        this.kneeProblemToken = ''
+        this.kneeRepSliceIndex = null
         this.caseSummary = ''
         this.problemError = e.message || '문제를 불러오지 못했습니다.'
       } finally {
@@ -664,7 +689,12 @@ export default {
         return brainMriAsGrade(data)
       }
       if (kind === 'knee-mri') {
-        const user = getUserSession()
+        if (!getUserSession()) {
+          throw new Error('로그인이 필요합니다. 다시 로그인해 주세요.')
+        }
+        if (!this.kneeProblemToken) {
+          throw new Error('문제 화면 정보가 없습니다. 문제를 다시 열어 주세요.')
+        }
         const data = await gradeKneeRoi({
           study_idx: this.studyIdx,
           roi_type: 'box',
@@ -673,7 +703,7 @@ export default {
           width: box.width,
           height: box.height,
           slice_index: this.shownSliceIndex,
-          user_idx: user?.idx ?? 1
+          problem_token: this.kneeProblemToken
         })
         return kneeAsGrade(data)
       }
@@ -730,7 +760,11 @@ export default {
           sliceTotal: multiSlice ? this.slicePaths.length : null,
           userRoi: userRois[0],
           userRois,
-          gradeResult: {...data, overlay_png_base64: overlayPath ? null : data.overlay_png_base64}
+          gradeResult: {
+            ...data,
+            result: normalizeResult(data.result) || data.result,
+            overlay_png_base64: overlayPath ? null : data.overlay_png_base64
+          }
         }
         try {
           sessionStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(payload))

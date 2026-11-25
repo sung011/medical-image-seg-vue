@@ -32,7 +32,7 @@
 </template>
 
 <script>
-import {clearUserSession, getUserSession} from '../login/authSession'
+import {getUserSession, logoutUserSession} from '../login/authSession'
 
 const REVIEW_STORAGE_KEY = 'medlens.review'
 
@@ -76,9 +76,9 @@ export default {
     onUserMenu() {
       this.menuOpen = !this.menuOpen
     },
-    onLogout() {
+    async onLogout() {
       this.menuOpen = false
-      clearUserSession()
+      await logoutUserSession()
       sessionStorage.removeItem(REVIEW_STORAGE_KEY)
       this.user = null
       this.$router.push('/login')

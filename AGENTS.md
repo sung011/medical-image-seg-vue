@@ -31,8 +31,8 @@ src/
     Medical/review/    채점 리뷰
     glossary/          의학용어 사전
     analyze/           화면 공유 후 ROI 분석
-    note/              오답노트 (오답·부분정답 다시 풀기)
-    history/           학습 기록 (진도, 정답률, 최근 제출)
+    note/              리뷰노트 (불일치·부분일치 다시 풀기)
+    history/           학습 기록 (진도, 일치률, 최근 제출)
 ```
     
 - 새 화면은 해당 기능 폴더에 `PascalCase.vue`로 둔다.
@@ -44,8 +44,8 @@ src/
 - 로그인 사용자: `sessionStorage` 키 `medlens_user`. 읽고 쓰기는 `src/components/login/authSession.js`만 사용한다.
 - 채점 결과: `sessionStorage` 키 `medlens.review`. 읽고 쓰기는 `src/components/Medical/review/reviewModel.js`만 사용한다.
 - 풀이 화면 쿼리: `region` (`brain` `chest` `abdomen` `knee`), `type` (예: `CT`).
-- 백엔드 주소는 `src/apiBase.js`의 `API_BASE`만 고친다. 기본값은 `http://127.0.0.1:8000`. 각 요청 파일은 경로만 이 값 뒤에 붙인다.
-- 영상 파일 주소는 `src/imageBase.js`의 `IMAGE_BASE`만 고친다. 기본값은 `https://kr.object.ncloudstorage.com/biz02gj`. 문제·리뷰·오답노트·학습 기록은 상대 경로를 이 값 뒤에 붙인다.
+- 백엔드 주소는 `src/apiBase.js`의 `API_BASE`만 고친다. 개발 서버에서는 `/__api`(vue.config.js 프록시), 기본값은 `http://127.0.0.1:8000`. 각 요청 파일은 경로만 이 값 뒤에 붙인다. 로그인·로그아웃·무릎 채점은 `credentials: 'include'`로 서버 세션 쿠키를 쓴다.
+- 영상 파일 주소는 `src/imageBase.js`의 `IMAGE_BASE`만 고친다. 기본값은 `https://kr.object.ncloudstorage.com/biz02gj`. 문제·리뷰·리뷰노트·학습 기록은 상대 경로를 이 값 뒤에 붙인다. `/knee_series/`는 공개 버킷에 없으므로 `studyIdx`와 장 번호로 `GET /learning/problem/{번호}/image?slice_index=`를 쓴다(`buildImageUrl`).
 
 ## 구현 습관
 
