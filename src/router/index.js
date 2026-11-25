@@ -12,7 +12,10 @@ import WrongNotePage from '../components/note/WrongNotePage.vue'
 import LearningHistoryPage from '../components/history/LearningHistoryPage.vue'
 import GlossaryPage from '../components/glossary/GlossaryPage.vue'
 import IntroPage from '../components/intro/IntroPage.vue'
+import MyPage from '../components/account/MyPage.vue'
+import SettingsPage from '../components/account/SettingsPage.vue'
 import {getUserSession} from '../components/login/authSession'
+import {enforceAccountBinding} from '../components/login/accountSession'
 
 function requireSession(to, from, next) {
     if (!getUserSession()) {
@@ -114,8 +117,23 @@ const router = createRouter({
             path: '/glossary',
             component: GlossaryPage,
             beforeEnter: requireSession
+        },
+        {
+            path: '/mypage',
+            component: MyPage,
+            beforeEnter: requireSession
+        },
+        {
+            path: '/settings',
+            component: SettingsPage,
+            beforeEnter: requireSession
         }
     ]
+})
+
+// 화면을 옮길 때마다 계정 서버 결속을 확인한다. 실행 설정이 바뀌었거나 두 서버 주소가 다르면 기존 세션을 지운다(그 뒤 각 경로의 세션 검사가 /login 으로 보낸다).
+router.beforeEach(() => {
+    enforceAccountBinding()
 })
 
 export default router

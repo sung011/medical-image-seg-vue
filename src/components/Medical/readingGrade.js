@@ -117,8 +117,13 @@ export async function fetchKneeTask(studyIdx) {
 }
 
 export async function gradeKneeRoi(fields) {
+  const owner = getUserSession()
+  if (!isAccountSession(owner)) {
+    throw new Error('무릎 채점은 다시 로그인한 뒤 사용할 수 있어요. 로그아웃 후 다시 로그인해 주세요.')
+  }
   const body = new URLSearchParams()
   Object.keys(fields).forEach((key) => {
+    if (key === 'user_idx') return
     if (fields[key] != null && fields[key] !== '') body.set(key, String(fields[key]))
   })
   let response

@@ -9,7 +9,7 @@
         <!--        <router-link class="main-header__link" to="/glossary">용어 사전</router-link>-->
         <router-link class="main-header__link" to="/note">리뷰노트</router-link>
         <router-link class="main-header__link" to="/analyze">화면 분석</router-link>
-        <a class="main-header__link" href="#" @click.prevent>마이페이지</a>
+        <router-link class="main-header__link" to="/mypage">마이페이지</router-link>
         <button type="button" class="main-header__link main-header__inquiry" @click="onInquiry">
           문의하기
         </button>
@@ -41,8 +41,6 @@
 import {getUserSession, logoutUserSession} from '../login/authSession'
 import BrandMark from './BrandMark.vue'
 
-const REVIEW_STORAGE_KEY = 'medlens.review'
-
 export default {
   name: 'MainHeader',
   components: {
@@ -51,7 +49,8 @@ export default {
   data() {
     return {
       user: getUserSession(),
-      menuOpen: false
+      menuOpen: false,
+      loggingOut: false
     }
   },
   computed: {

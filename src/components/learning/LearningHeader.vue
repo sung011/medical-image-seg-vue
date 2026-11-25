@@ -51,7 +51,8 @@ export default {
   data() {
     return {
       user: getUserSession(),
-      menuOpen: false
+      menuOpen: false,
+      loggingOut: false
     }
   },
   computed: {

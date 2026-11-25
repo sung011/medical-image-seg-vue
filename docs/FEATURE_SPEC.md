@@ -24,7 +24,7 @@
 - [x] 헤더 "리뷰노트"와 홈의 리뷰노트 카드는 `/note`로 이동한다
 - [x] 홈의 학습 기록 카드는 `/history`로 이동한다
 - [x] 홈의 화면 분석 카드는 `/analyze`로 이동한다
-- [ ] 마이페이지 화면으로 이동한다
+- [x] 헤더 "마이페이지"는 `/mypage`로 이동한다. 화면 내용의 연결 상태는 아래 마이페이지 절을 본다
 - [x] 이벤트 팝업은 `GET http://127.0.0.1:8000/popups` 목록을 화면 왼쪽 위부터 여러 장 띄운다. 제목 줄을 끌어 각 팝업을 옮길 수 있다. ×·닫기는 그 팝업만 지금 화면에서 닫고, "오늘 하루 보지 않기"는 그 팝업만 오늘 다시 뜨지 않는다
 - [x] `pp_link`가 있을 때만 "참여하기"를 보여 준다. http 주소는 새 탭, 그 외 경로는 앱 안에서 이동한다
 - [x] 헤더 "문의하기"는 채팅 창을 연다. `GET /qa?user_idx=`로 최근 문의를 보여주고, 첫 글은 `POST /qa`, 이어서 쓴 글은 `POST /qa/{idx}/messages`로 보낸다
@@ -54,9 +54,10 @@
 ## 로그인 `/login`
 
 - [x] 아이디, 비밀번호를 입력한다
-- [x] `POST ${API_BASE}/login` 본문 `{ userId, userPw }`, `credentials: 'include'`로 서버 학습자 세션 쿠키를 받는다
-- [x] 성공(`ok`) 시 `medlens_user`를 저장하고 `/main`으로 이동한다
-- [x] 실패 시 서버 `detail` 또는 `message`, 없으면 "아이디 또는 비밀번호가 올바르지 않습니다."
+- [x] 같은 출처 `POST /account-api/login` 본문 `{ userId, userPw }`를 한 번 보낸다(`accountSession.login()`)
+- [x] 성공 응답(`ok`·양의 정수 `idx`·아이디)을 받으면 이어서 `GET /account-api/me`로 쿠키가 실제로 오가고 같은 회원인지 확인한다. 둘 다 맞을 때만 세션(`account_verified: true` 포함)을 저장하고 `/main`으로 이동한다
+- [x] 틀린 비밀번호·가짜 성공(HTML·깨진 JSON)·쿠키 확인 실패·다른 회원·두 백엔드 주소 불일치이면 세션을 저장하지 않고 고정 안내를 보여 준다(서버 원문은 쓰지 않는다)
+- [x] 로그인·로그아웃·비밀번호 변경·정보 저장은 같은 브라우저의 모든 탭에서 한 번에 하나만 실행한다(Web Locks). 쿠키가 바뀌면 다른 탭에 알리고, 알림을 못 받은 탭도 돌아올 때 다시 확인한다
 - [x] 이미 로그인된 사용자는 `/main`으로 보낸다
 - [x] 가입 화면으로 이동하는 링크가 있다
 - [x] '아이디 찾기 | 비밀번호 찾기' 링크로 `/find-id`·`/find-password` 에 간다
@@ -179,9 +180,28 @@
 - [x] 케이스 행은 `region`, `type`, `idx`(study), `review`(제출 번호)로 `/medical/review`에 간다. 리뷰 화면은 `review`로 그 제출 이미지를 불러온다
 - [x] 기간 안 제출이 없으면 "이 기간에 학습 기록이 없어요."를 보여 준다
 
+## 마이페이지 `/mypage`
+
+- [x] 헤더 "마이페이지"로 들어오고, 세션이 없으면 `/login`으로 보낸다. 쿠키 확인 전 방식으로 로그인한 세션이면 서버를 부르지 않고 다시 로그인을 안내한다
+- [x] `GET /account-api/me`로 이름·학교·전공·아이디와 최근 저장된 제출 최대 5건을 보여 준다. 응답 회원이 화면 세션과 다르면 그리지 않는다
+- [x] `GET /account-api/me/stats`로 격려 문구, 연속 학습일·이번 주 표시, 숫자 4칸(푼 문제·정답률·이번 주 푼 문제·학습한 부위), 최근 7일 막대, 부위별 정답률을 채운다. 서버 계약(합계·범위·`owner_idx`)과 다르면 통계 칸만 오류다. 숫자는 서버가 계산한 값만 쓴다
+- [x] 통계만 실패하면 프로필·최근 제출은 그대로 두고 "다시 시도"를 보여 준다. 401·403·서버 오류는 고정 안내다. 응답 본문이 멈추면 15초 뒤 실패로 본다
+- [x] 서울 자정이 지나거나 탭에 돌아오면 다시 받는다. 다른 탭에서 계정이 바뀌면 지금 계정을 다시 확인한다
+- [x] "설정 보기"는 `/settings`, "학습 시작"은 `/learning`, 최근 제출 아래 "학습 기록"은 `/history`로 이동한다
+
+## 설정 `/settings`
+
+- [x] 마이페이지 "설정 보기"로 들어오고, 세션이 없으면 `/login`으로 보낸다
+- [x] `GET /account-api/me/settings`로 이름·학교·전공과 정보 버전을 불러온다. 응답 회원이 화면 세션과 다르면 그리지 않는다
+- [x] 내 정보 저장: 입력 확인 → "이 내용으로 저장할까요?" → `PATCH /account-api/me/profile`(현재 비밀번호·`expected_version`). 409 는 "다른 곳에서 정보가 바뀌었어요"와 다시 불러오기, 틀린 비밀번호·입력 오류는 고정 안내다. 저장 여부를 모르면 자동으로 다시 보내지 않는다
+- [x] 비밀번호 변경: `POST /account-api/me/password`가 `ok·password_changed·session_ended`를 모두 true 로 돌려주면 화면 세션을 정리하고 로그인 화면에 "비밀번호를 변경했어요"를 보여 준다. 화면을 떠나도 결과 확인까지 마친다
+- [x] 쓰기 요청(로그아웃·저장·비밀번호 변경)은 화면 세션의 회원 번호를 `X-Medlens-Account`로 보내고, 프록시가 같은 쿠키로 `GET /me/settings`를 불러 인증된 회원과 같을 때만 넘긴다. 다르면 412 이고 "다른 계정이 로그인되어 있어 요청을 보내지 않았어요" 안내다
+- [x] 비밀번호 찾기 안내는 아이디·이름·생년월일과 가입 때 등록한 질문의 답으로 확인한다고 적는다. 학교·전공은 확인에 쓰지 않는다
+- [x] "마이페이지로 돌아가기"는 `/mypage`로 간다. "로그아웃"은 머리글과 같은 `logout()`이다
+
 ## 화면 공유 분석 `/analyze`
 
-- [x] 로그인 없이 연다. 상단 헤더는 다른 페이지와 같은 `MainHeader`다. 왼쪽은 화면 공유·ROI, 오른쪽은 분석 결과다
+- [x] 로그인 세션이 있어야 연다(없으면 `/login`). 상단 헤더는 다른 페이지와 같은 `MainHeader`다. 왼쪽은 화면 공유·ROI, 오른쪽은 분석 결과다
 - [x] "화면 공유 시작"은 브라우저 화면 공유를 받고, 휠로 스크롤한 뒤 드래그로 네모 박스를 그린다
 - [x] "선택 영역 분석"은 고른 대상으로 자른 이미지를 보낸다. 뇌 CT는 `POST ${API_BASE}/api/v1/analyze/screen-roi`와 출혈·germinoma 확률, 흉부 X-ray는 모델 준비 `GET ${API_BASE}/api/v1/thorax/health` 뒤 `POST ${API_BASE}/api/v1/thorax/analyze/screen-roi`(판독문 없음), 복부 CT는 모델·판독문 상태 `GET ${API_BASE}/api/v1/abdomen/health` 뒤 `POST ${API_BASE}/api/v1/abdomen/analyze/screen-roi`로 장기 박스·점수·overlay를 받는다(`classification.task`는 `abdomen`, 장기 점수=그 장기 박스 최고 신뢰도, 질환 진단이 아니라 장기 위치 학습용), 뇌 MRI는 `GET ${API_BASE}/api/v1/brain-mri/health` 뒤 `POST ${API_BASE}/api/v1/analyze/brain-mri`(PNG/JPEG, 시퀀스 선택), 무릎 MRI는 촬영면·범위와 함께 `POST ${API_BASE}/api/v1/knee/screen-roi`다. 오른쪽 결과 칸은 그 안에서 스크롤한다
 - [x] "AI 해설 (MedGemma)"는 뇌 CT·복부 CT 분석이 끝난 뒤에 켜진다. 뇌 CT는 `POST ${API_BASE}/api/v1/analyze/screen-roi/explain`, 복부 CT는 `POST ${API_BASE}/api/v1/abdomen/analyze/screen-roi/explain`으로 한국어 판독문([검사]~[면책])을 받아 보여 준다

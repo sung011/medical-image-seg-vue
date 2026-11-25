@@ -63,7 +63,6 @@
 import {getUserSession, logoutUserSession} from '../login/authSession'
 import BrandMark from '../main/BrandMark.vue'
 
-const REVIEW_STORAGE_KEY = 'medlens.review'
 
 const REGION_LABELS = {
   brain: '뇌',
@@ -81,6 +80,7 @@ export default {
     return {
       user: getUserSession(),
       menuOpen: false,
+      loggingOut: false,
       guideOpen: false
     }
   },
