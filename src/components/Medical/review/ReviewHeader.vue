@@ -21,10 +21,9 @@
 </template>
 
 <script>
-import { logoutUserSession } from '../../login/authSession'
+import { getUserSession } from '../../login/authSession'
+import { logout } from '../../login/accountSession'
 import BrandMark from '../../main/BrandMark.vue'
-
-const REVIEW_STORAGE_KEY = 'medlens.review'
 
 export default {
   name: 'ReviewHeader',
@@ -32,11 +31,18 @@ export default {
     BrandMark
   },
   emits: ['next', 'done'],
+  data() {
+    return {
+      loggingOut: false
+    }
+  },
   methods: {
     async onLogout() {
-      await logoutUserSession()
-      sessionStorage.removeItem(REVIEW_STORAGE_KEY)
-      this.$router.push('/login')
+      if (this.loggingOut) return
+      this.loggingOut = true
+      await logout()
+      this.loggingOut = false
+      if (!getUserSession()) this.$router.push('/login')
     }
   }
 }

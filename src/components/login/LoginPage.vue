@@ -31,8 +31,7 @@
 <script>
 import LoginBrandPanel from './LoginBrandPanel.vue'
 import LoginForm from './LoginForm.vue'
-import { saveUserSession } from './authSession'
-import { API_BASE, apiCredentials } from '../../apiBase'
+import { login, retryServerLogout, takeLoginNotice } from './accountSession'
 
 // 로그인 실패 안내. 서버 원문은 쓰지 않는다.
 const LOGIN_ERROR = {
@@ -78,34 +77,13 @@ export default {
       this.errorMessage = ''
 
       try {
-        const res = await fetch(LOGIN_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: apiCredentials(),
-          body: JSON.stringify({ userId, userPw })
-        })
-        const data = await res.json().catch(() => ({}))
-
-        if (!res.ok || !data.ok) {
-          const detail = data.detail
-          const message =
-            (typeof detail === 'string' && detail) ||
-            (detail && typeof detail === 'object' && typeof detail.message === 'string' && detail.message) ||
-            data.message ||
-            '아이디 또는 비밀번호가 올바르지 않습니다.'
-          throw new Error(message)
-        }
-
-        saveUserSession(data)
+        // 같은 출처 로그인 한 번 + 쿠키로 본인 확인까지 끝나야 화면 세션을 저장한다(accountSession.login).
+        await login(userId, userPw)
+        this.notice = null
         await this.$router.push('/main')
       } catch (e) {
-        const msg = e && e.message ? String(e.message) : ''
-        if (/failed to fetch|networkerror|network|load failed|unavailable/i.test(msg)) {
-          this.errorMessage =
-            '서버에 연결하지 못했습니다. npm run serve 를 재시작한 뒤 다시 시도해 주세요.'
-        } else {
-          this.errorMessage = msg || '로그인에 실패했습니다.'
-        }
+        const kind = e && e.kind
+        this.errorMessage = LOGIN_ERROR[kind] || '로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.'
       } finally {
         this.loading = false
       }
@@ -181,9 +159,9 @@ export default {
   min-width: 0;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 860px) {
   .login-page__card {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
     min-height: 520px;
   }
 }

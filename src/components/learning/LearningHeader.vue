@@ -32,9 +32,8 @@
 </template>
 
 <script>
-import {getUserSession, logoutUserSession} from '../login/authSession'
-
-const REVIEW_STORAGE_KEY = 'medlens.review'
+import {getUserSession} from '../login/authSession'
+import {logout} from '../login/accountSession'
 
 export default {
   name: 'LearningHeader',
@@ -78,11 +77,13 @@ export default {
       this.menuOpen = !this.menuOpen
     },
     async onLogout() {
+      if (this.loggingOut) return
       this.menuOpen = false
-      await logoutUserSession()
-      sessionStorage.removeItem(REVIEW_STORAGE_KEY)
-      this.user = null
-      this.$router.push('/login')
+      this.loggingOut = true
+      await logout()
+      this.loggingOut = false
+      this.user = getUserSession()
+      if (!this.user) this.$router.push('/login')
     }
   }
 }

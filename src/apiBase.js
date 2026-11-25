@@ -1,6 +1,10 @@
 const DEFAULT_API_BASE = 'http://127.0.0.1:8000'
 const API_BASE_KEY = 'medlens_api_base'
-const LOCAL_PROXY_BASE = '/__api'
+const LOOPBACK = ['localhost', '127.0.0.1', '[::1]', '::1']
+// 설정 주소 형식이 틀렸을 때 쓰는 자리 표시. 예약된 .invalid 이름이라 어떤 서버에도 닿지 않는다(잘못된 곳으로 요청이 가지 않게).
+const INVALID_API_BASE = 'http://invalid-api-base.invalid'
+// 허용하는 주소 형식: http(s)://호스트[:포트] 와 선택적인 끝 슬래시 하나. 경로·쿼리·조각·사용자 정보·빈 구분자(? #)·스킴 뒤 슬래시 생략은 받지 않는다.
+const ORIGIN_FORMAT = /^https?:\/\/[^/?#@\s\\]+\/?$/i
 
 function hostApiBase() {
   if (typeof window === 'undefined' || !window.location) return ''
@@ -40,40 +44,31 @@ function dropUntrustedOverride(trusted) {
   }
 }
 
-function isLocalHostname(host) {
-  return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+export const API_BASE = CANONICAL_API_BASE || INVALID_API_BASE
+dropUntrustedOverride(CANONICAL_API_BASE)
+
+/** 계정 프록시 대상(ACCOUNT_PROXY_TARGET)의 정규 origin. 실행 설정에서만 온다. */
+export const ACCOUNT_TARGET = canonicalOrigin(process.env.VUE_APP_ACCOUNT_UPSTREAM)
+
+/**
+ * 브라우저가 쓰는 백엔드(API_BASE)와 계정 프록시 대상이 같은 서버인지 본다. 같으면 ''.
+ * 기본은 정규 origin(스킴·호스트·포트) 완전 일치다. 루프백끼리·화면 호스트라도 문자열이 다르면 다른 서버로 본다.
+ * 같은 서버를 다른 주소로 불러야 할 때만 실행 설정 ACCOUNT_API_ALIASES(쉼표 목록)에 API_BASE 의 origin 을 적어 같은 서버임을 밝힌다.
+ */
+export function accountTargetProblem() {
+  if (!ACCOUNT_TARGET || !CANONICAL_API_BASE) return 'unknown'
+  if (CANONICAL_API_BASE === ACCOUNT_TARGET) return ''
+  const aliases = String(process.env.VUE_APP_ACCOUNT_API_ALIASES || '')
+    .split(',')
+    .map((s) => canonicalOrigin(s))
+    .filter(Boolean)
+  return aliases.includes(CANONICAL_API_BASE) ? '' : 'mismatch'
 }
 
-/** vue-cli 개발 서버(:8080 등)에서는 같은 출처 프록시로 세션 쿠키를 넘긴다. */
-function localDevProxyBase() {
-  if (typeof window === 'undefined' || !window.location) return ''
-  const host = window.location.hostname
-  const port = window.location.port
-  if (!isLocalHostname(host)) return ''
-  if (!port || port === '8000') return ''
-  return LOCAL_PROXY_BASE
-}
-
-/** 로컬 개발 중 localStorage 가 :8000 을 가리키면 쿠키가 막히므로 프록시를 쓴다. */
-function resolveApiBase() {
-  const proxy = localDevProxyBase()
-  const stored = storedApiBase()
-  if (proxy && stored) {
-    try {
-      const url = new URL(stored)
-      if (isLocalHostname(url.hostname) && (url.port === '8000' || url.port === '')) {
-        return proxy
-      }
-    } catch (err) {
-      /* 상대 경로 등이면 저장된 값 사용 */
-    }
-  }
-  return stored || proxy || hostApiBase() || DEFAULT_API_BASE
-}
-
-export const API_BASE = resolveApiBase()
-
-/** 같은 출처(프록시)일 때만 쿠키를 보낸다. 크로스 오리진 + credentials 는 CORS * 에서 실패한다. */
+/**
+ * fetch credentials.
+ * 같은 출처 상대 경로(/__api, /account-api)는 include, 절대 주소는 same-origin.
+ */
 export function apiCredentials() {
   return String(API_BASE).startsWith('/') ? 'include' : 'same-origin'
 }
